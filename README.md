@@ -53,6 +53,36 @@ a level of maturity similar to WmlComparer. At the moment it is NOT included.
 
 ## Getting started
 
+### Install .NET Core 8
+
+The Open-XML-PowerTools engine we're using in the initial releases requires .NET to run (don't worry, this is very 
+well-supported cross-platform at the moment). Our builds are targeting x86-64 Linux and Windows, however, so you'll 
+need to modify the build script and build new binaries if you want to target another runtime / architecture.
+
+#### On Linux
+
+You can follow [Microsoft's instructions for your Linux distribution](https://learn.microsoft.com/en-us/dotnet/core/install/linux)
+
+#### On Windows
+
+You can follow [Microsoft's instructions for your Windows vesrion](https://learn.microsoft.com/en-us/dotnet/core/install/windows?tabs=net80)
+
+### Install the Library
+
+At the moment, we are not distributing via pypi. You can easily install directly from this repo, however. 
+
+```commandline
+pip install git+https://github.com/JSv4/Python-Docx-Redlines
+```
+
+You can add this as a dependency like so
+
+```requirements
+python_redlines @ git+https://github.com/JSv4/Python-Docx-Redlines@v.0.0.1
+```
+
+### Use the Library
+
 If you just want to use the tool, jump into our [quickstart guide](docs/quickstart.md).
 
 ## Architecture Overview
