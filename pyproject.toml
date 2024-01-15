@@ -39,12 +39,18 @@ path = "src/python_redlines/__about__.py"
 
 [tool.hatchling.build]
 packages = [
-    {include = "python_redlines"},
+    {include = "src/python_redlines"},
 ]
 data-files = [
-    { include = "python_redlines/dist/*", to = "python_redlines/dist" },
-    { include = "python_redlines/bin/*", to = "python_redlines/bin" }
+    { include = "dist/*", to = "dist" },
+    { include = "bin/*", to = "bin" }
 ]
+[tool.hatch.build.targets.wheel]
+only-include = ["src/python_redlines", "dist"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+"dist" = "python_redlines/dist"
 
 [tool.hatch.envs.default]
 dependencies = [
