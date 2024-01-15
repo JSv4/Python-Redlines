@@ -4,7 +4,7 @@ import os
 import platform
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple, Optional
 
 from .__about__ import __version__
 
@@ -29,53 +29,67 @@ class XmlPowerToolsEngine(object):
 
         if os_name == 'linux':
             zip_name = f"linux-{arch}-{__version__}.zip"
+            binary_name = 'linux-64/redlines'
+
         elif os_name == 'windows':
             zip_name = f"win-{arch}-{__version__}.zip"
+            binary_name = 'win-x64/redlines.exe'
+
         else:
             raise EnvironmentError("Unsupported OS")
 
-        binary_name = 'redlines' if os_name == 'linux' else 'redlines.exe'
-        zip_path = os.path.join(binaries_path, zip_name)
+        full_binary_path = os.path.join(target_path, binary_name)
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(target_path)
+        if not os.path.exists(full_binary_path):
+
+            zip_path = os.path.join(binaries_path, zip_name)
+
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(target_path)
 
         return os.path.join(target_path, binary_name)
 
-    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path]) -> bytes:
+    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path]) \
+            -> Tuple[bytes, Optional[str], Optional[str]]:
         """
         Runs the redlines binary. The 'original' and 'modified' arguments can be either bytes or file paths.
         Returns the redline output as bytes.
         """
-        with tempfile.NamedTemporaryFile(delete=False) as redline_output_file:
+        temp_files = []
+        try:
+
+            target_path = tempfile.NamedTemporaryFile(delete=False).name
             original_path = self._write_to_temp_file(original) if isinstance(original, bytes) else original
             modified_path = self._write_to_temp_file(modified) if isinstance(modified, bytes) else modified
+            temp_files.extend([target_path, original_path, modified_path])
 
-            command = [self.extracted_binaries_path, author_tag, original_path, modified_path, redline_output_file.name]
-            subprocess.run(command, check=True)
+            command = [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
 
-            redline_output_file.seek(0)
-            redline_output = redline_output_file.read()
+            # Capture stdout and stderr
+            result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        return redline_output
+            stdout_output = result.stdout if isinstance(result.stdout, str) and len(result.stdout) > 0 else None
+            stderr_output = result.stderr if isinstance(result.stderr, str) and len(result.stderr) > 0 else None
+
+            redline_output = Path(target_path).read_bytes()
+
+            return redline_output, stdout_output, stderr_output
+
+        finally:
+            self._cleanup_temp_files(temp_files)
+
+    def _cleanup_temp_files(self, temp_files):
+        for file_path in temp_files:
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                print(f"Error deleting temp file {file_path}: {e}")
 
     def _write_to_temp_file(self, data):
         """
         Writes bytes data to a temporary file and returns the file path.
         """
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(data)
-            return temp_file.name
-
-    def _ensure_temp_file(self, data):
-        """
-        Ensures the data is in a file. If data is bytes, it writes it to a temp file and returns the file path.
-        Otherwise, it returns the data as is, assuming it's a file path.
-        """
-        if isinstance(data, bytes):
-            temp_file = tempfile.NamedTemporaryFile(delete=False)
-            temp_file.write(data)
-            temp_file.close()
-            return temp_file.name
-        else:
-            return data
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.write(data)
+        temp_file.close()
+        return temp_file.name

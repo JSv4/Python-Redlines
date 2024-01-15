@@ -54,11 +54,11 @@ def main():
 
     # Compress the Linux build
     linux_build_dir = './csproj/bin/Release/net8.0/linux-x64'
-    compress_files(linux_build_dir, f"./src/python_redlines/bin/linux-x64-{version}.tar.gz")
+    compress_files(linux_build_dir, f"./src/python_redlines/dist/linux-x64-{version}.tar.gz")
 
     # Compress the Windows build
     windows_build_dir = './csproj/bin/Release/net8.0/win-x64'
-    compress_files(windows_build_dir, f"./src/python_redlines/bin/win-x64-{version}.zip")
+    compress_files(windows_build_dir, f"./src/python_redlines/dist/win-x64-{version}.zip")
 
     print("Build and compression complete.")
 

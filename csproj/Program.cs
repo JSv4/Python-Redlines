@@ -29,9 +29,8 @@ class Program
             var originalBytes = File.ReadAllBytes(originalFilePath);
             var modifiedBytes = File.ReadAllBytes(modifiedFilePath);
             var originalDocument = new WmlDocument(originalFilePath, originalBytes);
-            Console.WriteLine(originalDocument);
             var modifiedDocument = new WmlDocument(modifiedFilePath, modifiedBytes);
-            Console.WriteLine(modifiedDocument);
+
             var comparisonSettings = new WmlComparerSettings
             {
                 AuthorForRevisions = authorTag,
@@ -39,9 +38,7 @@ class Program
             };
 
             var comparisonResults = WmlComparer.Compare(originalDocument, modifiedDocument, comparisonSettings);
-            Console.WriteLine(comparisonResults);
             var revisions = WmlComparer.GetRevisions(comparisonResults, comparisonSettings);
-            Console.WriteLine(revisions);
 
             // Output results
             Console.WriteLine($"Revisions found: {revisions.Count}");
