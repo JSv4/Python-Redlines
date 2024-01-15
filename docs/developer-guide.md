@@ -10,16 +10,14 @@
 
 ### Step 1: Clone the Repository
 
-Clone the RedlinesWrapper repository to your local
+Clone the Python-Docx-Redlines repository to your local
 
 machine. Use Git to clone the repository using the following command:
 
 ```bash
-git clone [URL_OF_YOUR_REPOSITORY]
-cd [REPOSITORY_NAME]
+git clone https://github.com/JSv4/Python-Docx-Redlines
+cd python-docx-redlines
 ```
-
-Replace `[URL_OF_YOUR_REPOSITORY]` with the actual URL of your repository and `[REPOSITORY_NAME]` with the name of the directory where your repository is cloned.
 
 ### Step 2: Install Hatch
 
@@ -107,8 +105,4 @@ This will run all the test cases defined in your test files.
 
 ## Conclusion
 
-You've now set up the RedlinesWrapper project, built the necessary C# binaries, and learned how to use the Python wrapper to compare `.docx` files. Running the tests ensures that your setup is correct and the wrapper functions as expected.
-
----
-
-Feel free to modify this Quickstart Guide to better fit the specifics of your project, such as the exact commands for building the C# binaries or the directory structure of your project. This guide provides a general framework to get users started with the RedlinesWrapper.
+You've now set up the Python-Docx-Redlines project, built the necessary C# binaries, and learned how to use the Python wrapper to compare `.docx` files. Running the tests ensures that your setup is correct and the wrapper functions as expected.
