@@ -14,7 +14,7 @@ csproj/obj/*
 .Python
 build/
 develop-eggs/
-dist/
+src/python_redlines/dist/
 downloads/
 eggs/
 .eggs/
