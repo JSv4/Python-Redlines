@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel.force-include]
 "dist" = "python_redlines/dist"
 "dist/linux-x64-0.0.1.tar.gz" = "python_redlines/dist/linux-x64-0.0.1.tar.gz"
-"dist/win-x64-0.0.1.tar.gz" = "python_redlines/dist/win-x64-0.0.1.tar.gz"
+"dist/win-x64-0.0.1.zip" = "python_redlines/dist/win-x64-0.0.1.zip"
 
 [project]
 name = "python-redlines"
@@ -16,7 +16,7 @@ requires-python = ">=3.8"
 license = "MIT"
 keywords = []
 authors = [
-  { name = "U.N. Owen", email = "void@some.where" },
+  { name = "John Scrudato IV" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
