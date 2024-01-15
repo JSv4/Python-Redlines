@@ -40,8 +40,8 @@ path = "src/python_redlines/__about__.py"
 [tool.hatchling.build]
 packages = [
     {include = "src/python_redlines"},
-    {include = "src/python_redlines/dist/*.zip"},
-    {include = "src/python_redlines/dist/*.tar.gz"}
+    {include = "src/python_redlines/dist/*"},
+   {include = "src/python_redlines/bin/*"}
 ]
 
 [tool.hatch.envs.default]
