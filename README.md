@@ -72,13 +72,13 @@ You can follow [Microsoft's instructions for your Windows vesrion](https://learn
 At the moment, we are not distributing via pypi. You can easily install directly from this repo, however. 
 
 ```commandline
-pip install git+https://github.com/JSv4/Python-Docx-Redlines
+pip install git+https://github.com/JSv4/Python-Redlines
 ```
 
 You can add this as a dependency like so
 
 ```requirements
-python_redlines @ git+https://github.com/JSv4/Python-Docx-Redlines@v0.0.1
+python_redlines @ git+https://github.com/JSv4/Python-Redlines@v0.0.1
 ```
 
 ### Use the Library
