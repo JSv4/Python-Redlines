@@ -18,7 +18,7 @@ class XmlPowerToolsEngine(object):
         Unzips the appropriate C# binary for the current platform.
         """
         base_path = os.path.dirname(__file__)
-        binaries_path = os.path.join(base_path, 'data')
+        binaries_path = os.path.join(base_path, 'dist')
         target_path = os.path.join(base_path, 'bin')
 
         if not os.path.exists(target_path):
