@@ -78,7 +78,7 @@ pip install git+https://github.com/JSv4/Python-Docx-Redlines
 You can add this as a dependency like so
 
 ```requirements
-python_redlines @ git+https://github.com/JSv4/Python-Docx-Redlines@v.0.0.1
+python_redlines @ git+https://github.com/JSv4/Python-Docx-Redlines@v0.0.1
 ```
 
 ### Use the Library
