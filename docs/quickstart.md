@@ -15,11 +15,11 @@ wrapper = XmlPowerToolsEngine()
 
 ### Step 2: Run Redlines
 
-Use the `run_redlines` method to compare documents. You can pass the paths of the `.docx` files or their byte content:
+Use the `run_redline` method to compare documents. You can pass the paths of the `.docx` files or their byte content:
 
 ```python
 # Example with file paths
-output = wrapper.run_redlines('AuthorTag', '/path/to/original.docx', '/path/to/modified.docx')
+output = wrapper.run_redline('AuthorTag', '/path/to/original.docx', '/path/to/modified.docx')
 
 # Example with byte content
 with open('/path/to/original.docx', 'rb') as f:
