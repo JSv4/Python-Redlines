@@ -99,7 +99,7 @@ The `redlines` C# utility is a command line tool that requires four arguments:
 3. `modified_path.docx` - Path to the modified document.
 4. `redline_path.docx` - Path where the redlined document will be saved.
 
-The Python wrapper, `XmlPowerToolsEngine` and its main method `run_redlines()`, simplifies the use of `redlines` by 
+The Python wrapper, `XmlPowerToolsEngine` and its main method `run_redline()`, simplifies the use of `redlines` by 
 orchestrating its execution with Python and letting you pass in bytes or file paths for the original and modified 
 documents.
 
