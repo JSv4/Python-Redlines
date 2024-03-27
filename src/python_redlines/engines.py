@@ -44,6 +44,14 @@ class XmlPowerToolsEngine(object):
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(target_path)
 
+        elif os_name == 'darwin':
+            zip_name = f"osx-{arch}-{__version__}.tar.gz"
+            binary_name = 'osx-x64/redlines'
+            zip_path = os.path.join(binaries_path, zip_name)
+            if not os.path.exists(zip_path):
+                with tarfile.open(zip_path, 'r:gz') as tar_ref:
+                    tar_ref.extractall(target_path)
+
         else:
             raise EnvironmentError("Unsupported OS")
 
