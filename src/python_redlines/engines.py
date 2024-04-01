@@ -3,6 +3,7 @@ import tempfile
 import os
 import platform
 import zipfile
+import tarfile
 from pathlib import Path
 from typing import Union, Tuple, Optional
 
@@ -28,24 +29,31 @@ class XmlPowerToolsEngine(object):
         arch = 'x64'  # Assuming x64 architecture
 
         if os_name == 'linux':
-            zip_name = f"linux-{arch}-{__version__}.zip"
-            binary_name = 'linux-64/redlines'
+            zip_name = f"linux-{arch}-{__version__}.tar.gz"
+            binary_name = 'linux-x64/redlines'
+            zip_path = os.path.join(binaries_path, zip_name)
+            if not os.path.exists(zip_path):
+                with tarfile.open(zip_path, 'r:gz') as tar_ref:
+                    tar_ref.extractall(target_path)
 
         elif os_name == 'windows':
             zip_name = f"win-{arch}-{__version__}.zip"
             binary_name = 'win-x64/redlines.exe'
+            zip_path = os.path.join(binaries_path, zip_name)
+            if not os.path.exists(zip_path):
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(target_path)
+
+        elif os_name == 'darwin':
+            zip_name = f"osx-{arch}-{__version__}.tar.gz"
+            binary_name = 'osx-x64/redlines'
+            zip_path = os.path.join(binaries_path, zip_name)
+            if not os.path.exists(zip_path):
+                with tarfile.open(zip_path, 'r:gz') as tar_ref:
+                    tar_ref.extractall(target_path)
 
         else:
             raise EnvironmentError("Unsupported OS")
-
-        full_binary_path = os.path.join(target_path, binary_name)
-
-        if not os.path.exists(full_binary_path):
-
-            zip_path = os.path.join(binaries_path, zip_name)
-
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(target_path)
 
         return os.path.join(target_path, binary_name)
 
