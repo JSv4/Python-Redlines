@@ -1,5 +1,6 @@
 import subprocess
 import tempfile
+import logging
 import os
 import platform
 import zipfile
@@ -8,6 +9,8 @@ from pathlib import Path
 from typing import Union, Tuple, Optional
 
 from .__about__ import __version__
+
+logger = logging.getLogger(__name__)
 
 
 class XmlPowerToolsEngine(object):
@@ -19,8 +22,13 @@ class XmlPowerToolsEngine(object):
         Unzips the appropriate C# binary for the current platform.
         """
         base_path = os.path.dirname(__file__)
+        logger.debug(f"Python redlining base path: {base_path}")
+
         binaries_path = os.path.join(base_path, 'dist')
+        logger.debug(f"Python redlining binaries path: {binaries_path}")
+
         target_path = os.path.join(base_path, 'bin')
+        logger.debug(f"Target path: {target_path}")
 
         if not os.path.exists(target_path):
             os.makedirs(target_path)
