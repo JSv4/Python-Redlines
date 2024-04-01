@@ -23,8 +23,9 @@ maintained, as its most recent commits dates from 2 years ago and the repo issue
 
 As a first step, our project aims to bring the existing capabilities of WmlCompare into the Python world. Thankfully, 
 XML Power Tools is full cross-platform as it is written in .NET and compiles with the still-maintained .NET 8. The
-resulting binaries can be compiled for the latest versions of Windows and Linux (Ubuntu specifically, though other
-distributions should work fine too). 
+resulting binaries can be compiled for the latest versions of Windows, OSX and Linux (Ubuntu specifically, though other
+distributions should work fine too). We have included an OSX build but do not have an OSX machine to test on. Please 
+report an issues by opening a new Issue.
 
 The initial release has a single engine `XmlPowerToolsEngine`, which is just a Python wrapper for a simple C# utility
 written to leverage WmlComparer for 1-to-1 redlines. We hope this provides a stop-gap capability to Python developers 
@@ -32,9 +33,10 @@ seeking .docx redline capabilities.
 
 **Note**, we don't plan to fork or maintain Open-XML-PowerTools. [Version 4.4.0](https://www.nuget.org/packages/Open-Xml-PowerTools/), 
 which appears to only be compatible with [Open XML SDK < 3.0.0](https://www.nuget.org/packages/DocumentFormat.OpenXml) works
-for now, it needs to be made compatible with the latest versions of the Open XML SDK to extend its life. There are 
-also some [issues](https://github.com/dotnet/Open-XML-SDK/issues/1634) it seems the only maintainer of 
-Open-XML-PowerTools probably won't fix, and understanding the existing code base is no small task.
+for now, it needs to be made compatible with the latest versions of the Open XML SDK to extend its life. **There are 
+also some [issues](https://github.com/dotnet/Open-XML-SDK/issues/1634)**, and it seems the only maintainer of 
+Open-XML-PowerTools probably won't fix, and understanding the existing code base is no small task. Please be aware that
+**Open XML PowerTools is not a perfect comparison engine, but it will work for many purposes. Use at your own risk.**
 
 ### Step 2. Pure Python Comparison Engine
 
