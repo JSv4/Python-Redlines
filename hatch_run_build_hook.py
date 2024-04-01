@@ -6,4 +6,4 @@ class HatchRunBuildHook(BuildHookInterface):
 
     def initialize(self, version, build_data):
         # Run the 'hatch run build' command
-        subprocess.run(['hatch', 'run', 'build'], check=True)
+        subprocess.run(["python", "-m", "build_differ"], check=True)
