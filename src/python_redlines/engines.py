@@ -40,7 +40,7 @@ class XmlPowerToolsEngine(object):
             zip_name = f"linux-{arch}-{__version__}.tar.gz"
             binary_name = 'linux-x64/redlines'
             zip_path = os.path.join(binaries_path, zip_name)
-            if not os.path.exists(zip_path):
+            if os.path.exists(zip_path):
                 with tarfile.open(zip_path, 'r:gz') as tar_ref:
                     tar_ref.extractall(target_path)
 
@@ -48,7 +48,7 @@ class XmlPowerToolsEngine(object):
             zip_name = f"win-{arch}-{__version__}.zip"
             binary_name = 'win-x64/redlines.exe'
             zip_path = os.path.join(binaries_path, zip_name)
-            if not os.path.exists(zip_path):
+            if os.path.exists(zip_path):
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(target_path)
 
@@ -56,7 +56,7 @@ class XmlPowerToolsEngine(object):
             zip_name = f"osx-{arch}-{__version__}.tar.gz"
             binary_name = 'osx-x64/redlines'
             zip_path = os.path.join(binaries_path, zip_name)
-            if not os.path.exists(zip_path):
+            if os.path.exists(zip_path):
                 with tarfile.open(zip_path, 'r:gz') as tar_ref:
                     tar_ref.extractall(target_path)
 
