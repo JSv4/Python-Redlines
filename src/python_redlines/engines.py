@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class XmlPowerToolsEngine(object):
-    def __init__(self):
+    def __init__(self, reload_binary: bool = False):
         self.extracted_binaries_path = self._unzip_binary()
+        self._reload_binary = reload_binary
 
     def _unzip_binary(self):
         """
@@ -27,39 +28,53 @@ class XmlPowerToolsEngine(object):
         binaries_path = os.path.join(base_path, 'dist')
         logger.debug(f"Python redlining binaries path: {binaries_path}")
 
-        target_path = os.path.join(base_path, 'bin')
-        logger.debug(f"Target path: {target_path}")
-
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
-
         os_name = platform.system().lower()
         arch = 'x64'  # Assuming x64 architecture
 
         if os_name == 'linux':
             zip_name = f"linux-{arch}-{__version__}.tar.gz"
             binary_name = 'linux-x64/redlines'
+
+        elif os_name == "windows":
+            zip_name = f"win-{arch}-{__version__}.zip"
+            binary_name = 'win-x64/redlines.exe'
+
+        elif os_name == "darwin":
+            zip_name = f"osx-{arch}-{__version__}.tar.gz"
+            binary_name = 'osx-x64/redlines'
+        else:
+            raise EnvironmentError("Unsupported OS")
+
+        target_path = os.path.join(base_path, 'bin')
+        logger.debug(f"Target path: {target_path}")
+
+        # If target folder doesn't exist... created
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
+        else:
+            # If we don't want to reload the binary and it already exists... just return path
+            if not self._reload_binary:
+                return os.path.join(target_path, binary_name)
+
+        # Otherwise, go ahead and unzip... and this may vary depending on the architecture & env
+        if os_name == 'linux':
             zip_path = os.path.join(binaries_path, zip_name)
             if os.path.exists(zip_path):
                 with tarfile.open(zip_path, 'r:gz') as tar_ref:
                     tar_ref.extractall(target_path)
 
         elif os_name == 'windows':
-            zip_name = f"win-{arch}-{__version__}.zip"
-            binary_name = 'win-x64/redlines.exe'
             zip_path = os.path.join(binaries_path, zip_name)
             if os.path.exists(zip_path):
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(target_path)
 
         elif os_name == 'darwin':
-            zip_name = f"osx-{arch}-{__version__}.tar.gz"
-            binary_name = 'osx-x64/redlines'
             zip_path = os.path.join(binaries_path, zip_name)
             if os.path.exists(zip_path):
                 with tarfile.open(zip_path, 'r:gz') as tar_ref:
                     tar_ref.extractall(target_path)
-
+        # This is redundant given above test... but I'm leaving it here.
         else:
             raise EnvironmentError("Unsupported OS")
 

@@ -27,6 +27,7 @@ with open('/path/to/original.docx', 'rb') as f:
 with open('/path/to/modified.docx', 'rb') as f:
     modified_bytes = f.read()
 
+# This is a tuple, bytes @ element 0
 output = wrapper.run_redlines('AuthorTag', original_bytes, modified_bytes)
 ```
 
@@ -39,5 +40,5 @@ Process or save the output as needed. For example, to save the redline output to
 
 ```python
 with open('/path/to/redline_output.docx', 'wb') as f:
-    f.write(output)
+    f.write(output[0])
 ```
