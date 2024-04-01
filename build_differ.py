@@ -44,6 +44,8 @@ def main():
     version = get_version()
     print(f"Version: {version}")
 
+    dist_dir = "./src/python_redlines/dist/"
+
     # Build for Linux
     print("Building for Linux...")
     run_command('dotnet publish ./csproj -c Release -r linux-x64 --self-contained')
@@ -58,15 +60,15 @@ def main():
 
     # Compress the Linux build
     linux_build_dir = './csproj/bin/Release/net8.0/linux-x64'
-    compress_files(linux_build_dir, f"./dist/linux-x64-{version}.tar.gz")
+    compress_files(linux_build_dir, f"{dist_dir}/linux-x64-{version}.tar.gz")
 
     # Compress the Windows build
     windows_build_dir = './csproj/bin/Release/net8.0/win-x64'
-    compress_files(windows_build_dir, f"./dist/win-x64-{version}.zip")
+    compress_files(windows_build_dir, f"{dist_dir}/win-x64-{version}.zip")
 
     # Compress the macOS build
     macos_build_dir = './csproj/bin/Release/net8.0/osx-x64'
-    compress_files(macos_build_dir, f"./dist/osx-x64-{version}.tar.gz")
+    compress_files(macos_build_dir, f"{dist_dir}/osx-x64-{version}.tar.gz")
 
     print("Build and compression complete.")
 
