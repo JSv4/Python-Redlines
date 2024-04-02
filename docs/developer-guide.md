@@ -84,7 +84,7 @@ dotnet publish -c Release -r win-x64 --self-contained
 dotnet publish -c Release -r osx-x64 --self-contained
 ```
 
-4Archive and package binaries into `./dist/`:
+4. Archive and package binaries into `./dist/`:
 
 
 ## Running Tests
