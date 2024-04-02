@@ -2,7 +2,6 @@ import subprocess
 import os
 import tarfile
 import zipfile
-import sys
 
 
 def get_version():
