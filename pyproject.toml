@@ -10,6 +10,11 @@ artifacts = [
   "*.zip",
   "*.tar.gz",
 ]
+[tool.hatch.build.targets.sdist]
+include = [
+  "python_redlines/dist",
+  "python_redlines/bin",
+]
 
 # Build hook to build the binaries for distribution...
 [tool.hatch.build.hooks.custom]
