@@ -1,4 +1,5 @@
 *
-!*.tar.gz
-!*.zip
-!.gitignore
+!linux-x64-*.tar.gz
+!osx-x64-*.tar.gz
+!win-x64-*.zip
+!.gitignore`

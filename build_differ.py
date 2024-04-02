@@ -1,3 +1,4 @@
+import re
 import subprocess
 import os
 import tarfile
@@ -39,11 +40,21 @@ def compress_files(source_dir, target_file):
                                                os.path.join(source_dir, '..')))
 
 
+def cleanup_old_builds(dist_dir, current_version):
+    """
+    Deletes any build files ending in .zip or .tar.gz in the dist_dir with a different version tag.
+    """
+    for file in os.listdir(dist_dir):
+        if not file.endswith((f'{current_version}.zip', f'{current_version}.tar.gz'), '.gitignore'):
+            file_path = os.path.join(dist_dir, file)
+            os.remove(file_path)
+            print(f"Deleted old build file: {file}")
+
 def main():
     version = get_version()
     print(f"Version: {version}")
 
-    dist_dir = "./src/python_redlines/dist/"
+    dist_dir = "./dist/"
 
     # Build for Linux
     print("Building for Linux...")
@@ -68,6 +79,8 @@ def main():
     # Compress the macOS build
     macos_build_dir = './csproj/bin/Release/net8.0/osx-x64'
     compress_files(macos_build_dir, f"{dist_dir}/osx-x64-{version}.tar.gz")
+
+    cleanup_old_builds(dist_dir, version)
 
     print("Build and compression complete.")
 
