@@ -11,6 +11,10 @@ artifacts = [
   "*.tar.gz",
 ]
 
+# Build hook to build the binaries for distribution...
+[tool.hatch.build.hooks.custom]
+path = "hatch_run_build_hook.py"
+
 [project]
 name = "python-redlines"
 dynamic = ["version"]

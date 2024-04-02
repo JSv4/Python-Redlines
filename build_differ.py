@@ -54,7 +54,7 @@ def main():
     version = get_version()
     print(f"Version: {version}")
 
-    dist_dir = "./dist/"
+    dist_dir = "./src/python_redlines/dist/"
 
     # Build for Linux
     print("Building for Linux...")
