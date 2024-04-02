@@ -2,12 +2,15 @@ import subprocess
 import tempfile
 import os
 import platform
+import logging
 import zipfile
 import tarfile
 from pathlib import Path
 from typing import Union, Tuple, Optional
 
 from .__about__ import __version__
+
+logger = logging.getLogger(__name__)
 
 
 class XmlPowerToolsEngine(object):
@@ -44,7 +47,7 @@ class XmlPowerToolsEngine(object):
             zip_path: str - The path to the zip file
             target_path: str - The path to extract the binary to
         """
-
+        print(f"")
         if zip_path.endswith('.zip'):
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(target_path)
