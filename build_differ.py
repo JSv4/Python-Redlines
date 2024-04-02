@@ -45,7 +45,7 @@ def cleanup_old_builds(dist_dir, current_version):
     Deletes any build files ending in .zip or .tar.gz in the dist_dir with a different version tag.
     """
     for file in os.listdir(dist_dir):
-        if not file.endswith((f'{current_version}.zip', f'{current_version}.tar.gz'), '.gitignore'):
+        if not file.endswith((f'{current_version}.zip', f'{current_version}.tar.gz', '.gitignore')):
             file_path = os.path.join(dist_dir, file)
             os.remove(file_path)
             print(f"Deleted old build file: {file}")
