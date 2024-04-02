@@ -78,7 +78,13 @@ dotnet publish -c Release -r linux-x64 --self-contained
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-3. Archive and package binaries into `./dist/`:
+3. Build a binary for MacOS:
+
+```bash
+dotnet publish -c Release -r osx-x64 --self-contained
+```
+
+4Archive and package binaries into `./dist/`:
 
 
 ## Running Tests
