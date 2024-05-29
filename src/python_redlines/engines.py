@@ -64,19 +64,26 @@ class XmlPowerToolsEngine(object):
             zip_name: str - The name of the zip file
         """
         os_name = platform.system().lower()
-        arch = 'x64'  # Assuming x64 architecture
+        arch = platform.machine().lower()
+
+        if arch in ('x86_64', 'amd64'):
+            arch = 'x64'
+        elif arch in ('arm64', 'aarch64'):
+            arch = 'arm64'
+        else:
+            raise EnvironmentError(f"Unsupported architecture: {arch}")
 
         if os_name == 'linux':
             zip_name = f"linux-{arch}-{__version__}.tar.gz"
-            binary_name = 'linux-x64/redlines'
+            binary_name = f'linux-{arch}/redlines'
 
         elif os_name == 'windows':
             zip_name = f"win-{arch}-{__version__}.zip"
-            binary_name = 'win-x64/redlines.exe'
+            binary_name = f'win-{arch}/redlines.exe'
 
         elif os_name == 'darwin':
             zip_name = f"osx-{arch}-{__version__}.tar.gz"
-            binary_name = 'osx-x64/redlines'
+            binary_name = f'osx-{arch}/redlines'
 
         else:
             raise EnvironmentError("Unsupported OS")
