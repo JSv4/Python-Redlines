@@ -1,4 +1,3 @@
-import re
 import subprocess
 import os
 import tarfile
@@ -50,6 +49,7 @@ def cleanup_old_builds(dist_dir, current_version):
             os.remove(file_path)
             print(f"Deleted old build file: {file}")
 
+
 def main():
     version = get_version()
     print(f"Version: {version}")
@@ -67,6 +67,10 @@ def main():
     # Build for Windows x64
     print("Building for Windows x64...")
     run_command('dotnet publish ./csproj -c Release -r win-x64 --self-contained')
+
+    # Build for Windows ARM64
+    print("Building for Windows ARM64...")
+    run_command('dotnet publish ./csproj -c Release -r win-arm64 --self-contained')
 
     # Build for macOS x64
     print("Building for macOS x64...")
