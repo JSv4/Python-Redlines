@@ -90,17 +90,6 @@ dotnet publish -c Release -r osx-x64 --self-contained
 ## Running Tests
 
 To ensure everything is set up correctly and working as expected, run the tests included in the `tests/` directory.
-
-### Step 1: Navigate to the Test Directory
-
-Change to the `tests/` directory in your project:
-
-```bash
-cd path/to/tests
-```
-
-### Step 2: Run the Tests
-
 Execute the tests using pytest:
 
 ```bash

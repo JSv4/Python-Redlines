@@ -1,4 +1,3 @@
-import re
 import subprocess
 import os
 import tarfile
@@ -50,35 +49,56 @@ def cleanup_old_builds(dist_dir, current_version):
             os.remove(file_path)
             print(f"Deleted old build file: {file}")
 
+
 def main():
     version = get_version()
     print(f"Version: {version}")
 
     dist_dir = "./src/python_redlines/dist/"
 
-    # Build for Linux
-    print("Building for Linux...")
+    # Build for Linux x64
+    print("Building for Linux x64...")
     run_command('dotnet publish ./csproj -c Release -r linux-x64 --self-contained')
 
-    # Build for Windows
-    print("Building for Windows...")
+    # Build for Linux ARM64
+    print("Building for Linux ARM64...")
+    run_command('dotnet publish ./csproj -c Release -r linux-arm64 --self-contained')
+
+    # Build for Windows x64
+    print("Building for Windows x64...")
     run_command('dotnet publish ./csproj -c Release -r win-x64 --self-contained')
 
-    # Build for macOS
-    print("Building for macOS...")
+    # Build for Windows ARM64
+    print("Building for Windows ARM64...")
+    run_command('dotnet publish ./csproj -c Release -r win-arm64 --self-contained')
+
+    # Build for macOS x64
+    print("Building for macOS x64...")
     run_command('dotnet publish ./csproj -c Release -r osx-x64 --self-contained')
 
-    # Compress the Linux build
-    linux_build_dir = './csproj/bin/Release/net8.0/linux-x64'
-    compress_files(linux_build_dir, f"{dist_dir}/linux-x64-{version}.tar.gz")
+    # Build for macOS ARM64
+    print("Building for macOS ARM64...")
+    run_command('dotnet publish ./csproj -c Release -r osx-arm64 --self-contained')
 
-    # Compress the Windows build
+    # Compress the Linux x64 build
+    linux_x64_build_dir = './csproj/bin/Release/net8.0/linux-x64'
+    compress_files(linux_x64_build_dir, f"{dist_dir}/linux-x64-{version}.tar.gz")
+
+    # Compress the Linux ARM64 build
+    linux_arm64_build_dir = './csproj/bin/Release/net8.0/linux-arm64'
+    compress_files(linux_arm64_build_dir, f"{dist_dir}/linux-arm64-{version}.tar.gz")
+
+    # Compress the Windows x64 build
     windows_build_dir = './csproj/bin/Release/net8.0/win-x64'
     compress_files(windows_build_dir, f"{dist_dir}/win-x64-{version}.zip")
 
-    # Compress the macOS build
-    macos_build_dir = './csproj/bin/Release/net8.0/osx-x64'
-    compress_files(macos_build_dir, f"{dist_dir}/osx-x64-{version}.tar.gz")
+    # Compress the macOS x64 build
+    macos_x64_build_dir = './csproj/bin/Release/net8.0/osx-x64'
+    compress_files(macos_x64_build_dir, f"{dist_dir}/osx-x64-{version}.tar.gz")
+
+    # Compress the macOS ARM64 build
+    macos_arm64_build_dir = './csproj/bin/Release/net8.0/osx-arm64'
+    compress_files(macos_arm64_build_dir, f"{dist_dir}/osx-arm64-{version}.tar.gz")
 
     cleanup_old_builds(dist_dir, version)
 

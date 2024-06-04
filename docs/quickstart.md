@@ -28,7 +28,7 @@ with open('/path/to/modified.docx', 'rb') as f:
     modified_bytes = f.read()
 
 # This is a tuple, bytes @ element 0
-output = wrapper.run_redlines('AuthorTag', original_bytes, modified_bytes)
+output = wrapper.run_redline('AuthorTag', original_bytes, modified_bytes)
 ```
 
 In both cases, `output` will contain the byte content of the resulting redline - a .docx with changes in tracked 
