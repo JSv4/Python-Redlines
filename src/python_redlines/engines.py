@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class XmlPowerToolsEngine(object):
-    def __init__(self):
+    def __init__(self, target_path: Optional[str] = None):
+        self.target_path = target_path
         self.extracted_binaries_path = self.__unzip_binary()
 
     def __unzip_binary(self):
@@ -23,7 +24,7 @@ class XmlPowerToolsEngine(object):
         """
         base_path = os.path.dirname(__file__)
         binaries_path = os.path.join(base_path, 'dist')
-        target_path = os.path.join(base_path, 'bin')
+        target_path = self.target_path if self.target_path else os.path.join(base_path, 'bin')
 
         if not os.path.exists(target_path):
             os.makedirs(target_path)
@@ -47,7 +48,6 @@ class XmlPowerToolsEngine(object):
             zip_path: str - The path to the zip file
             target_path: str - The path to extract the binary to
         """
-        print(f"")
         if zip_path.endswith('.zip'):
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(target_path)
