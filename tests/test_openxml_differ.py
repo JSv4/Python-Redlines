@@ -6,18 +6,21 @@ from python_redlines.engines import XmlPowerToolsEngine
 
 
 def load_docx_bytes(file_path):
+    # Handle relative paths from test directory
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(os.path.dirname(__file__), file_path)
     with open(file_path, 'rb') as file:
         return file.read()
 
 
 @pytest.fixture
 def original_docx():
-    return load_docx_bytes('tests/fixtures/original.docx')
+    return load_docx_bytes('fixtures/original.docx')
 
 
 @pytest.fixture
 def modified_docx():
-    return load_docx_bytes('tests/fixtures/modified.docx')
+    return load_docx_bytes('fixtures/modified.docx')
 
 
 def test_run_redlines_with_real_files(original_docx, modified_docx):

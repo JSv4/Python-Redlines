@@ -1,6 +1,7 @@
 using System;
 using System.IO;
-using OpenXmlPowerTools;
+using Clippit;
+using Clippit.Word;
 using DocumentFormat.OpenXml.Packaging;
 
 class Program
