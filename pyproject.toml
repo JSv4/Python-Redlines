@@ -23,11 +23,11 @@ path = "hatch_run_build_hook.py"
 [project]
 name = "python-redlines"
 dynamic = ["version"]
-description = ''
+description = 'A pluggable document comparison library for generating redlined Word documents with tracked changes'
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
-keywords = []
+keywords = ["docx", "word", "redline", "comparison", "tracked-changes", "diff"]
 authors = [
   { name = "John Scrudato IV" },
 ]
@@ -41,16 +41,25 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Office/Business :: Office Suites",
+  "Topic :: Text Processing :: Markup",
 ]
-dependencies = [
+dependencies = []
+
+[project.optional-dependencies]
+# For development/building
+dev = [
   "hatch",
-  "hatchling"
+  "hatchling",
+  "coverage[toml]>=6.5",
+  "pytest",
+  "pytest-cov",
 ]
 
 [project.urls]
-Documentation = "https://github.com/unknown/python-redlines#readme"
-Issues = "https://github.com/unknown/python-redlines/issues"
-Source = "https://github.com/unknown/python-redlines"
+Documentation = "https://github.com/JSv4/Python-Redlines#readme"
+Issues = "https://github.com/JSv4/Python-Redlines/issues"
+Source = "https://github.com/JSv4/Python-Redlines"
 
 [tool.hatch.version]
 path = "src/python_redlines/__about__.py"
@@ -59,7 +68,9 @@ path = "src/python_redlines/__about__.py"
 dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
+  "pytest-cov",
 ]
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
@@ -71,7 +82,9 @@ cov = [
   "test-cov",
   "cov-report",
 ]
-build = "python -m build_differ"
+build-engines = "python -m build_differ"
+build-openxml = "python -m build_differ --engine openxml-powertools"
+build-docxodus = "python -m build_differ --engine docxodus"
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
@@ -101,3 +114,9 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

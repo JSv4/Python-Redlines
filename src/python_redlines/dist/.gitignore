@@ -1,2 +1,4 @@
-*
+# Ignore compiled binaries, keep directory structure
+*.zip
+*.tar.gz
 !.gitignore

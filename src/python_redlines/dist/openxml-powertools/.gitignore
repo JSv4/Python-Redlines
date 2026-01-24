@@ -1,0 +1,4 @@
+# Ignore compiled binaries
+*.zip
+*.tar.gz
+!.gitignore
