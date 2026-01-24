@@ -1,167 +1,305 @@
 # Python-Redlines: Docx Redlines (Tracked Changes) for the Python Ecosystem
 
+[![CI](https://github.com/JSv4/Python-Redlines/actions/workflows/ci.yml/badge.svg)](https://github.com/JSv4/Python-Redlines/actions/workflows/ci.yml)
+[![PyPI version](https://badge.fury.io/py/python-redlines.svg)](https://pypi.org/project/python-redlines/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Project Goal - Democratizing DOCX Comparisons
 
 The main goal of this project is to address the significant gap in the open-source ecosystem around `.docx` document
-comparison tools. Currently, the process of comparing and generating redline documents (documents that highlight 
-changes between versions) is complex and largely dominated by commercial software. These 
-tools, while effective, often come with cost barriers and limitations in terms of accessibility and integration 
+comparison tools. Currently, the process of comparing and generating redline documents (documents that highlight
+changes between versions) is complex and largely dominated by commercial software. These
+tools, while effective, often come with cost barriers and limitations in terms of accessibility and integration
 flexibility.
 
-`Python-redlines` aims to democratize the ability to run tracked change redlines for .docx, providing the 
+`Python-redlines` aims to democratize the ability to run tracked change redlines for .docx, providing the
 open-source community with a tool to create `.docx` redlines without the need for commercial software. This will let
 more legal hackers and hobbyist innovators experiment and create tooling for enterprise and legal.
 
-## Project Roadmap
+## Quick Start
 
-### Step 1. Open-XML-PowerTools `WmlComparer` Wrapper
+### Installation
 
-The [Open-XML-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) project historically offered a solid 
-foundation for working with `.docx` files and has an excellent (if imperfect) comparison engine in its `WmlComparer` 
-class. However, Microsoft archived the repository almost five years ago, and a forked repo is not being actively 
-maintained, as its most recent commits dates from 2 years ago and the repo issues list is disabled.
+```bash
+pip install python-redlines
+```
 
-As a first step, our project aims to bring the existing capabilities of WmlCompare into the Python world. Thankfully, 
-XML Power Tools is full cross-platform as it is written in .NET and compiles with the still-maintained .NET 8. The
-resulting binaries can be compiled for the latest versions of Windows, OSX and Linux (Ubuntu specifically, though other
-distributions should work fine too). We have included an OSX build but do not have an OSX machine to test on. Please 
-report an issues by opening a new Issue.
+Or install directly from GitHub:
 
-The initial release has a single engine `XmlPowerToolsEngine`, which is just a Python wrapper for a simple C# utility
-written to leverage WmlComparer for 1-to-1 redlines. We hope this provides a stop-gap capability to Python developers 
-seeking .docx redline capabilities. 
-
-**Note**, we don't plan to fork or maintain Open-XML-PowerTools. [Version 4.4.0](https://www.nuget.org/packages/Open-Xml-PowerTools/), 
-which appears to only be compatible with [Open XML SDK < 3.0.0](https://www.nuget.org/packages/DocumentFormat.OpenXml) works
-for now, it needs to be made compatible with the latest versions of the Open XML SDK to extend its life. **There are 
-also some [issues](https://github.com/dotnet/Open-XML-SDK/issues/1634)**, and it seems the only maintainer of 
-Open-XML-PowerTools probably won't fix, and understanding the existing code base is no small task. Please be aware that
-**Open XML PowerTools is not a perfect comparison engine, but it will work for many purposes. Use at your own risk.**
-
-### Step 2. Pure Python Comparison Engine
-
-Looking towards the future, rather than reverse engineer `WmlComparer` and maintain a C# codebase, we envision a 
-comparison engine written in python. We've done some experimentation with [`xmldiff`](https://github.com/Shoobx/xmldiff)
-as the engine to compare the underlying xml of docx files. Specifically, we've built a prototype to unzip `.docx` files, 
-execute an xml comparison using `xmldiff`, and then reconstructed a tracked changes docx with the proper Open XML
-(ooxml) tracked change tags. Preliminary experimentation with this approach has shown promise, indicating its 
-feasibility for handling modifications such as simple span inserts and deletes.
-
-However, this ambitious endeavor is not without its challenges. The intricacies of `.docx` files and the potential for 
-complex, corner-case scenarios necessitate a thoughtful and thorough development process. In the interim, `WmlComparer`
-is a great solution as it has clearly been built to account for many such corner cases, through a development process
-that clearly was influenced by issues discovered by a large user base. The XMLDiff engine will take some time to reach
-a level of maturity similar to WmlComparer. At the moment it is NOT included.
-
-## Getting started
-
-### Install .NET Core 8
-
-The Open-XML-PowerTools engine we're using in the initial releases requires .NET to run (don't worry, this is very 
-well-supported cross-platform at the moment). Our builds are targeting x86-64 Linux and Windows, however, so you'll 
-need to modify the build script and build new binaries if you want to target another runtime / architecture.
-
-#### On Linux
-
-You can follow [Microsoft's instructions for your Linux distribution](https://learn.microsoft.com/en-us/dotnet/core/install/linux)
-
-#### On Windows
-
-You can follow [Microsoft's instructions for your Windows vesrion](https://learn.microsoft.com/en-us/dotnet/core/install/windows?tabs=net80)
-
-### Install the Library
-
-At the moment, we are not distributing via pypi. You can easily install directly from this repo, however. 
-
-```commandline
+```bash
 pip install git+https://github.com/JSv4/Python-Redlines
 ```
 
-You can add this as a dependency like so
+### Basic Usage
 
-```requirements
-python_redlines @ git+https://github.com/JSv4/Python-Redlines@v0.0.1
+```python
+from python_redlines import get_engine
+
+# Get a comparison engine (default: openxml-powertools)
+engine = get_engine()
+
+# Load your documents
+with open("original.docx", "rb") as f:
+    original = f.read()
+with open("modified.docx", "rb") as f:
+    modified = f.read()
+
+# Generate redlined document
+redline_bytes, stdout, stderr = engine.compare(
+    author="John Doe",
+    original=original,
+    modified=modified
+)
+
+# Save the result
+with open("redlined.docx", "wb") as f:
+    f.write(redline_bytes)
 ```
 
-### Use the Library
+## Comparison Engines
 
-If you just want to use the tool, jump into our [quickstart guide](docs/quickstart.md).
+Python-Redlines uses a **pluggable engine architecture** that allows you to choose between different comparison backends. This design provides flexibility and allows the library to evolve as better comparison tools become available.
+
+### Available Engines
+
+| Engine | Name | Status | Description |
+|--------|------|--------|-------------|
+| [Open-Xml-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) | `openxml-powertools` | Default | Original WmlComparer engine. Stable but no longer maintained. |
+| [Docxodus](https://github.com/JSv4/Docxodus) | `docxodus` | Optional | Modern .NET 8.0 fork with improved features. **Will become default in future release.** |
+
+### Selecting an Engine
+
+```python
+from python_redlines import get_engine, list_engines
+
+# See available engines
+print(list_engines())  # ['openxml-powertools', 'docxodus']
+
+# Use the default engine (currently openxml-powertools)
+engine = get_engine()
+
+# Or explicitly select an engine
+engine = get_engine('openxml-powertools')
+engine = get_engine('docxodus')
+```
+
+### Engine Comparison
+
+#### Open-Xml-PowerTools (Current Default)
+
+The [Open-Xml-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) engine uses the `WmlComparer` class from Microsoft's archived repository. While stable and well-tested, it has limitations:
+
+- ⚠️ Repository archived ~5 years ago
+- ⚠️ Limited compatibility with newer Open XML SDK versions
+- ⚠️ No active maintenance
+
+#### Docxodus (Recommended, Future Default)
+
+[Docxodus](https://github.com/JSv4/Docxodus) is a modernized fork of Open-Xml-PowerTools, upgraded to .NET 8.0 with active maintenance and improved features:
+
+- ✅ **Move Detection** - Identifies when content is relocated rather than deleted and re-inserted
+- ✅ **Format Change Detection** - Recognizes styling-only modifications (bold, italic, font changes)
+- ✅ **Active Maintenance** - Regular updates and bug fixes
+- ✅ **.NET 8.0** - Modern framework support
+- ✅ **Configurable Thresholds** - Fine-tune comparison sensitivity
+
+**We plan to make Docxodus the default engine in a future release** once it has been thoroughly tested in production environments.
+
+## API Reference
+
+### Core Functions
+
+```python
+from python_redlines import (
+    get_engine,           # Get an engine instance by name
+    list_engines,         # List all registered engine names
+    list_available_engines,  # List engines with binaries installed
+)
+```
+
+### Engine Interface
+
+All engines implement the `ComparisonEngine` interface:
+
+```python
+class ComparisonEngine:
+    @property
+    def name(self) -> str:
+        """Engine identifier (e.g., 'openxml-powertools', 'docxodus')"""
+
+    @property
+    def description(self) -> str:
+        """Human-readable description"""
+
+    def compare(
+        self,
+        author: str,
+        original: Union[bytes, Path],
+        modified: Union[bytes, Path]
+    ) -> Tuple[bytes, Optional[str], Optional[str]]:
+        """
+        Compare two documents and return redlined version.
+
+        Returns:
+            - bytes: The redlined document
+            - str | None: Standard output from comparison
+            - str | None: Standard error (if any)
+        """
+
+    def is_available(self) -> bool:
+        """Check if engine binaries are installed"""
+```
+
+### Backward Compatibility
+
+The original `XmlPowerToolsEngine` API is still supported:
+
+```python
+from python_redlines import XmlPowerToolsEngine
+
+engine = XmlPowerToolsEngine()
+redline_bytes, stdout, stderr = engine.run_redline(
+    author_tag="Author",
+    original=original_bytes,
+    modified=modified_bytes
+)
+```
 
 ## Architecture Overview
 
-`XmlPowerToolsEngine` is a Python wrapper class for the `redlines` C# command-line tool, source of which is available in 
-[./csproj/Program.cs](./csproj/Program.cs). The redlines utility and wrapper let you compare two docx files and 
-show the differences in tracked changes (a "redline" document).
+### Project Structure
 
-### C# Functionality
-
-The `redlines` C# utility is a command line tool that requires four arguments:
-1. `author_tag` - A tag to identify the author of the changes.
-2. `original_path.docx` - Path to the original document.
-3. `modified_path.docx` - Path to the modified document.
-4. `redline_path.docx` - Path where the redlined document will be saved.
-
-The Python wrapper, `XmlPowerToolsEngine` and its main method `run_redline()`, simplifies the use of `redlines` by 
-orchestrating its execution with Python and letting you pass in bytes or file paths for the original and modified 
-documents.
-
-### Packaging
-
-The project is structured as follows:
 ```
 python-redlines/
-│
-├── csproj/
-│   ├── bin/
-│   ├── obj/
-│   ├── Program.cs
-│   ├── redlines.csproj
-│   └── redlines.sln
-│
-├── docs/
-│   ├── developer-guide.md
-│   └── quickstart.md
-│
-├── src/
-│   └── python_redlines/
-│       ├── bin/
-│       │   └── .gitignore
-│       ├── dist/
-│       │   ├── .gitignore
-│       │   ├── linux-x64-0.0.1.tar.gz
-│       │   └── win-x64-0.0.1.zip
-│       ├── __about__.py
-│       ├── __init__.py
-│       └── engines.py
-│
+├── csproj/                      # Open-Xml-PowerTools CLI wrapper
+│   └── Program.cs
+├── csproj-docxodus/             # Docxodus CLI wrapper
+│   └── Program.cs
+├── src/python_redlines/
+│   ├── base.py                  # Abstract ComparisonEngine interface
+│   ├── engines.py               # Engine implementations
+│   ├── registry.py              # Engine discovery and registration
+│   ├── dist/
+│   │   ├── openxml-powertools/  # Open-Xml-PowerTools binaries
+│   │   └── docxodus/            # Docxodus binaries
+│   └── bin/                     # Extracted binaries (runtime)
 ├── tests/
-|   ├── fixtures/
-|   ├── test_openxml_differ.py
-|   └── __init__.py
-|
-├── .gitignore
-├── build_differ.py
-├── extract_version.py
-├── License.md
-├── pyproject.toml
-└── README.md
+│   ├── test_base.py
+│   ├── test_engines.py
+│   ├── test_registry.py
+│   └── fixtures/
+└── build_differ.py              # Build script for all engines
 ```
 
-- `src/your_package/`: Contains the Python wrapper code.
-- `dist/`: Contains the zipped C# binaries for different platforms.
-- `bin/`: Target directory for extracted binaries.
-- `tests/`: Contains test cases and fixtures for the wrapper.
+### How It Works
 
-### Detailed Explanation and Dev Setup
+1. **Python Wrapper** - The `engines.py` module provides Python classes that wrap .NET CLI tools
+2. **Binary Management** - Platform-specific binaries are bundled and extracted at runtime
+3. **Pluggable Design** - New engines can be added by implementing the `ComparisonEngine` interface
 
-If you want to contribute to the library or want to dive into some of the C# packaging architecture, go to our
-[developer guide](docs/developer-guide.md).
+### Supported Platforms
 
-## Additional Information
+| Platform | Architecture | Status |
+|----------|-------------|--------|
+| Linux | x64 | ✅ Supported |
+| Linux | ARM64 | ✅ Supported |
+| Windows | x64 | ✅ Supported |
+| Windows | ARM64 | ✅ Supported |
+| macOS | x64 | ✅ Supported |
+| macOS | ARM64 (Apple Silicon) | ✅ Supported |
 
-- **Contributing**: Contributions to the project should follow the established coding and documentation standards.
-- **Issues and Support**: For issues, feature requests, or support, please use the project's issue tracker on GitHub.
+## Development
+
+### Prerequisites
+
+- Python 3.8+
+- .NET 8.0 SDK (for building binaries)
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/JSv4/Python-Redlines.git
+cd Python-Redlines
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Build engine binaries
+python build_differ.py
+
+# Run tests
+pytest tests/ -v
+```
+
+### Building Specific Engines
+
+```bash
+# Build all engines
+python build_differ.py
+
+# Build only Open-Xml-PowerTools
+python build_differ.py --engine openxml-powertools
+
+# Build only Docxodus
+python build_differ.py --engine docxodus
+
+# Build for a specific platform
+python build_differ.py --platform linux-x64
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=python_redlines
+
+# Run only unit tests (no binaries needed)
+pytest tests/ -v -k "not integration"
+```
+
+## Roadmap
+
+### Current State (v0.0.4+)
+
+- ✅ Pluggable engine architecture
+- ✅ Open-Xml-PowerTools engine (default)
+- ✅ Docxodus engine (optional)
+- ✅ Cross-platform support (Linux, Windows, macOS)
+- ✅ Comprehensive test suite
+
+### Planned
+
+- 🔄 Make Docxodus the default engine
+- 📋 Pure Python comparison engine (using [xmldiff](https://github.com/Shoobx/xmldiff))
+- 📋 Additional comparison options and configuration
+- 📋 Better error messages and diagnostics
+
+## Documentation
+
+- [Quick Start Guide](docs/quickstart.md)
+- [Developer Guide](docs/developer-guide.md)
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+For bugs or feature requests, please [open an issue](https://github.com/JSv4/Python-Redlines/issues).
 
 ## License
 
-MIT
+[MIT](License.md)
+
+## Acknowledgments
+
+- [Open-Xml-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) - Original WmlComparer implementation
+- [Docxodus](https://github.com/JSv4/Docxodus) - Modernized fork with active maintenance
+- [DocumentFormat.OpenXml](https://github.com/dotnet/Open-XML-SDK) - Microsoft's Open XML SDK
