@@ -13,7 +13,9 @@ artifacts = [
 [tool.hatch.build.targets.sdist]
 include = [
   "python_redlines/dist",
+  "python_redlines/dist_docxodus",
   "python_redlines/bin",
+  "python_redlines/bin_docxodus",
 ]
 
 # Build hook to build the binaries for distribution...
