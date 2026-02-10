@@ -13,35 +13,45 @@ from .__about__ import __version__
 logger = logging.getLogger(__name__)
 
 
-class XmlPowerToolsEngine(object):
+class BaseEngine(object):
+    """
+    Base class for redline comparison engines. Subclasses must define:
+      - DIST_DIR_NAME: directory name under src/python_redlines/ holding compressed binaries
+      - BIN_DIR_NAME: directory name under src/python_redlines/ for extracted binaries
+      - BINARY_BASE_NAME: the name of the executable (without .exe extension)
+    """
+    DIST_DIR_NAME: str = NotImplemented
+    BIN_DIR_NAME: str = NotImplemented
+    BINARY_BASE_NAME: str = NotImplemented
+
     def __init__(self, target_path: Optional[str] = None):
         self.target_path = target_path
-        self.extracted_binaries_path = self.__unzip_binary()
+        self.extracted_binaries_path = self._unzip_binary()
 
-    def __unzip_binary(self):
+    def _unzip_binary(self):
         """
         Unzips the appropriate C# binary for the current platform.
         """
         base_path = os.path.dirname(__file__)
-        binaries_path = os.path.join(base_path, 'dist')
-        target_path = self.target_path if self.target_path else os.path.join(base_path, 'bin')
+        binaries_path = os.path.join(base_path, self.DIST_DIR_NAME)
+        target_path = self.target_path if self.target_path else os.path.join(base_path, self.BIN_DIR_NAME)
 
         if not os.path.exists(target_path):
             os.makedirs(target_path)
 
         # Get the binary name and zip name based on the OS and architecture
-        binary_name, zip_name = self.__get_binaries_info()
+        binary_name, zip_name = self._get_binaries_info()
 
         # Check if the binary already exists. If not, extract it.
         full_binary_path = os.path.join(target_path, binary_name)
 
         if not os.path.exists(full_binary_path):
             zip_path = os.path.join(binaries_path, zip_name)
-            self.__extract_binary(zip_path, target_path)
+            self._extract_binary(zip_path, target_path)
 
         return os.path.join(target_path, binary_name)
 
-    def __extract_binary(self, zip_path: str, target_path: str):
+    def _extract_binary(self, zip_path: str, target_path: str):
         """
         Extracts the binary from the zip file based on the extension. Supports .zip and .tar.gz files
         :parameter
@@ -56,7 +66,7 @@ class XmlPowerToolsEngine(object):
             with tarfile.open(zip_path, 'r:gz') as tar_ref:
                 tar_ref.extractall(target_path)
 
-    def __get_binaries_info(self):
+    def _get_binaries_info(self):
         """
         Returns the binary name and zip name based on the OS and architecture
         :return
@@ -75,15 +85,15 @@ class XmlPowerToolsEngine(object):
 
         if os_name == 'linux':
             zip_name = f"linux-{arch}-{__version__}.tar.gz"
-            binary_name = f'linux-{arch}/redlines'
+            binary_name = f'linux-{arch}/{self.BINARY_BASE_NAME}'
 
         elif os_name == 'windows':
             zip_name = f"win-{arch}-{__version__}.zip"
-            binary_name = f'win-{arch}/redlines.exe'
+            binary_name = f'win-{arch}/{self.BINARY_BASE_NAME}.exe'
 
         elif os_name == 'darwin':
             zip_name = f"osx-{arch}-{__version__}.tar.gz"
-            binary_name = f'osx-{arch}/redlines'
+            binary_name = f'osx-{arch}/{self.BINARY_BASE_NAME}'
 
         else:
             raise EnvironmentError("Unsupported OS")
@@ -93,7 +103,7 @@ class XmlPowerToolsEngine(object):
     def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path]) \
             -> Tuple[bytes, Optional[str], Optional[str]]:
         """
-        Runs the redlines binary. The 'original' and 'modified' arguments can be either bytes or file paths.
+        Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths.
         Returns the redline output as bytes.
         """
         temp_files = []
@@ -134,3 +144,15 @@ class XmlPowerToolsEngine(object):
         temp_file.write(data)
         temp_file.close()
         return temp_file.name
+
+
+class XmlPowerToolsEngine(BaseEngine):
+    DIST_DIR_NAME = 'dist'
+    BIN_DIR_NAME = 'bin'
+    BINARY_BASE_NAME = 'redlines'
+
+
+class DocxodusEngine(BaseEngine):
+    DIST_DIR_NAME = 'dist_docxodus'
+    BIN_DIR_NAME = 'bin_docxodus'
+    BINARY_BASE_NAME = 'redline'
