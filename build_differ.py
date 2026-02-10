@@ -26,11 +26,14 @@ def get_version():
 
 def run_command(command):
     """
-    Runs a shell command and prints its output.
+    Runs a shell command and prints its output. Raises on non-zero exit code.
     """
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in process.stdout:
         print(line.decode().strip())
+    process.wait()
+    if process.returncode != 0:
+        raise RuntimeError(f"Command failed with exit code {process.returncode}: {command}")
 
 
 def compress_files(source_dir, target_file):
