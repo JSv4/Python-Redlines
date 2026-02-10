@@ -44,7 +44,7 @@ The system uses a two-layer wrapper pattern with a shared base class:
    - `XmlPowerToolsEngine(BaseEngine)` — sets constants for the Open-XML-PowerTools binary (`dist/`, `bin/`, `redlines`)
    - `DocxodusEngine(BaseEngine)` — sets constants for the Docxodus binary (`dist_docxodus/`, `bin_docxodus/`, `redline`)
 
-   Both engines share the same CLI argument format: `<author_tag> <original.docx> <modified.docx> <output.docx>`
+   Both engines expose `run_redline(author_tag, original, modified, **kwargs)`. `DocxodusEngine` overrides `_build_command()` to translate kwargs (e.g. `detect_moves`, `detail_threshold`) into CLI flags for the Docxodus binary. `XmlPowerToolsEngine` uses the legacy 4-positional-arg format and ignores kwargs.
 
 2. **C# binaries**:
    - `csproj/Program.cs` — Open-XML-PowerTools CLI tool

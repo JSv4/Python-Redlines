@@ -92,6 +92,42 @@ with open("redline.docx", "wb") as f:
 print(stdout)  # e.g. "Redline complete: 9 revision(s) found"
 ```
 
+## Comparison Settings (DocxodusEngine only)
+
+`DocxodusEngine` supports fine-grained control over the comparison via keyword arguments to `run_redline()`:
+
+```python
+from python_redlines import DocxodusEngine
+
+engine = DocxodusEngine()
+redline_bytes, stdout, stderr = engine.run_redline(
+    "Reviewer", original, modified,
+    detect_moves=True,
+    simplify_move_markup=True,
+    detail_threshold=0.3,
+    case_insensitive=True,
+)
+```
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `detail_threshold` | float | 0.0 | Comparison granularity (0.0–1.0, lower = more detailed) |
+| `case_insensitive` | bool | False | Ignore case differences |
+| `detect_moves` | bool | False | Enable move detection |
+| `simplify_move_markup` | bool | False | Convert moves to del/ins for Word compatibility |
+| `move_similarity_threshold` | float | 0.8 | Jaccard threshold for move matching (0.0–1.0) |
+| `move_minimum_word_count` | int | 3 | Minimum words for move detection |
+| `detect_format_changes` | bool | True | Detect formatting-only changes |
+| `conflate_spaces` | bool | True | Treat breaking/non-breaking spaces the same |
+| `date_time` | str | now | Custom ISO 8601 timestamp for revisions |
+
+> **Warning:** Move detection can cause Word to display "unreadable content" warnings due to a known
+> ID collision bug. When using `detect_moves=True`, always set `simplify_move_markup=True` as well.
+> This converts move markup to regular del/ins (loses green move styling but ensures Word compatibility).
+
+> **Note:** These settings are only available on `DocxodusEngine`. `XmlPowerToolsEngine` ignores
+> extra keyword arguments.
+
 ## Architecture Overview
 
 Both engines follow the same pattern: a Python wrapper class invokes a self-contained C# binary via subprocess.

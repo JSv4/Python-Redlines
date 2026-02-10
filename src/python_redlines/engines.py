@@ -100,11 +100,23 @@ class BaseEngine(object):
 
         return binary_name, zip_name
 
-    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path]) \
+    def _build_command(self, author_tag: str, original_path, modified_path, target_path, **kwargs):
+        """
+        Build the command list for subprocess execution.
+        Subclasses can override to customize argument format.
+        """
+        return [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
+
+    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path], **kwargs) \
             -> Tuple[bytes, Optional[str], Optional[str]]:
         """
         Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths.
         Returns the redline output as bytes.
+
+        Additional keyword arguments are passed to _build_command() for engine-specific options.
+        DocxodusEngine supports: detail_threshold, case_insensitive, detect_moves,
+        simplify_move_markup, move_similarity_threshold, move_minimum_word_count,
+        detect_format_changes, conflate_spaces, date_time.
         """
         temp_files = []
         try:
@@ -114,7 +126,7 @@ class BaseEngine(object):
             modified_path = self._write_to_temp_file(modified) if isinstance(modified, bytes) else modified
             temp_files.extend([target_path, original_path, modified_path])
 
-            command = [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
+            command = self._build_command(author_tag, original_path, modified_path, target_path, **kwargs)
 
             # Capture stdout and stderr
             result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -156,3 +168,61 @@ class DocxodusEngine(BaseEngine):
     DIST_DIR_NAME = 'dist_docxodus'
     BIN_DIR_NAME = 'bin_docxodus'
     BINARY_BASE_NAME = 'redline'
+
+    # Boolean flags (default False — presence enables)
+    _BOOL_FLAGS = [
+        ('case_insensitive', '--case-insensitive'),
+        ('detect_moves', '--detect-moves'),
+        ('simplify_move_markup', '--simplify-move-markup'),
+    ]
+
+    # Negatable flags (default True — --no- prefix disables)
+    _NEG_FLAGS = [
+        ('detect_format_changes', '--no-detect-format-changes'),
+        ('conflate_spaces', '--no-conflate-spaces'),
+    ]
+
+    # Value flags
+    _VALUE_FLAGS = [
+        ('detail_threshold', '--detail-threshold'),
+        ('move_similarity_threshold', '--move-similarity-threshold'),
+        ('move_minimum_word_count', '--move-minimum-word-count'),
+        ('date_time', '--date-time'),
+    ]
+
+    @staticmethod
+    def _validate_kwargs(kwargs):
+        if 'detail_threshold' in kwargs:
+            val = kwargs['detail_threshold']
+            if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
+                raise ValueError(f"detail_threshold must be a float between 0.0 and 1.0, got {val!r}")
+
+        if 'move_similarity_threshold' in kwargs:
+            val = kwargs['move_similarity_threshold']
+            if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
+                raise ValueError(f"move_similarity_threshold must be a float between 0.0 and 1.0, got {val!r}")
+
+        if 'move_minimum_word_count' in kwargs:
+            val = kwargs['move_minimum_word_count']
+            if not isinstance(val, int) or val < 1:
+                raise ValueError(f"move_minimum_word_count must be a positive integer, got {val!r}")
+
+    def _build_command(self, author_tag, original_path, modified_path, target_path, **kwargs):
+        self._validate_kwargs(kwargs)
+
+        cmd = [self.extracted_binaries_path, original_path, modified_path, target_path,
+               f'--author={author_tag}']
+
+        for kwarg, flag in self._BOOL_FLAGS:
+            if kwargs.get(kwarg):
+                cmd.append(flag)
+
+        for kwarg, neg_flag in self._NEG_FLAGS:
+            if kwarg in kwargs and not kwargs[kwarg]:
+                cmd.append(neg_flag)
+
+        for kwarg, flag in self._VALUE_FLAGS:
+            if kwarg in kwargs:
+                cmd.append(f'{flag}={kwargs[kwarg]}')
+
+        return cmd
