@@ -1,22 +1,49 @@
 # Python-Redlines: Docx Redlines (Tracked Changes) for the Python Ecosystem
 
-## Project Goal - Democratizing DOCX Comparisons
+Generate tracked-change "redline" `.docx` documents from Python — compare two Word files
+and get back a third document showing every insertion, deletion, and (optionally) move as
+native Word tracked changes.
 
-The main goal of this project is to address the significant gap in the open-source ecosystem around `.docx` document
-comparison tools. Currently, the process of comparing and generating redline documents (documents that highlight
-changes between versions) is complex and largely dominated by commercial software. These
-tools, while effective, often come with cost barriers and limitations in terms of accessibility and integration
-flexibility.
+Comparing `.docx` documents has long been dominated by commercial software, with cost
+barriers and little integration flexibility. Python-Redlines brings open-source `.docx`
+redlining to the Python ecosystem so legal hackers, hobbyists, and product teams can build
+on it freely: two documents in, one redline out.
 
-`Python-redlines` aims to democratize the ability to run tracked change redlines for .docx, providing the
-open-source community with a tool to create `.docx` redlines without the need for commercial software. This will let
-more legal hackers and hobbyist innovators experiment and create tooling for enterprise and legal.
+## Quick Start
+
+The **default engine is [Docxodus](https://github.com/JSv4/Docxodus)** — a modernized,
+actively-maintained .NET 8 comparison engine (detailed below). Install it and you're
+running; the engine binary is prebuilt and embedded in the wheel, so there is **no .NET
+SDK to install and nothing to compile**:
+
+```commandline
+pip install python-redlines[docxodus]
+```
+
+```python
+from python_redlines import DocxodusEngine
+
+with open("original.docx", "rb") as f:
+    original = f.read()
+with open("modified.docx", "rb") as f:
+    modified = f.read()
+
+engine = DocxodusEngine()
+redline_bytes, stdout, stderr = engine.run_redline("Reviewer", original, modified)
+
+with open("redline.docx", "wb") as f:
+    f.write(redline_bytes)
+```
+
+That's the whole thing. The rest of this README covers the second (legacy) engine,
+comparison settings, and how the packages are built and distributed.
 
 ## Comparison Engines
 
-Python-Redlines ships with **two comparison engines** — choose the one that best fits your needs:
+Python-Redlines provides **two comparison engines**. `DocxodusEngine` is the default and
+recommended choice; `XmlPowerToolsEngine` remains available as a legacy option.
 
-### `DocxodusEngine` — Recommended
+### `DocxodusEngine` — Default (Recommended)
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is a modernized .NET 8.0 fork of Open-XML-PowerTools with
 significant improvements:
@@ -76,29 +103,8 @@ extra to install.
 
 ### Use the Library
 
-If you just want to use the tool, jump into our [quickstart guide](docs/quickstart.md).
-
-### Quick Example
-
-```python
-from python_redlines import DocxodusEngine
-
-# Load your documents as bytes
-with open("original.docx", "rb") as f:
-    original = f.read()
-with open("modified.docx", "rb") as f:
-    modified = f.read()
-
-# Generate a redline document
-engine = DocxodusEngine()
-redline_bytes, stdout, stderr = engine.run_redline("Reviewer", original, modified)
-
-# Save the result
-with open("redline.docx", "wb") as f:
-    f.write(redline_bytes)
-
-print(stdout)  # e.g. "Redline complete: 9 revision(s) found"
-```
+See the [Quick Start](#quick-start) above for a minimal example, or the
+[quickstart guide](docs/quickstart.md) for a step-by-step walkthrough.
 
 ## Comparison Settings (DocxodusEngine only)
 
