@@ -1,103 +1,95 @@
-# Developer Guide for RedlinesWrapper
+# Developer Guide
 
 ## Prerequisites
 
-- Python 3.7 or higher installed
-- .NET SDK for building C# binaries or .NET Runtime to run them
-- Hatch for Python environment and package management
+- Python 3.9 or higher
+- .NET 8.0 SDK (to compile the C# engine binaries)
+- `git` (the Docxodus engine is a submodule)
 
-## Setting Up the Project
+## Repository layout
 
-### Step 1: Clone the Repository
+This repository is a monorepo that publishes three PyPI packages, each with its own
+`pyproject.toml` under `packages/`:
 
-Clone the Python-Docx-Redlines repository to your local
+| Directory | PyPI name | Contents |
+|---|---|---|
+| `packages/core` | `python-redlines` | Pure-Python wrapper |
+| `packages/ooxmlpowertools` | `python-redlines-ooxmlpowertools` | Open-XML-PowerTools engine binary |
+| `packages/docxodus` | `python-redlines-docxodus` | Docxodus engine binary |
 
-machine. Use Git to clone the repository using the following command:
+The repo root is not itself installable; its `pyproject.toml` only holds shared
+pytest/coverage configuration.
 
-```bash
-git clone https://github.com/JSv4/Python-Docx-Redlines
-cd python-docx-redlines
-```
-
-### Step 2: Install Hatch
-
-If Hatch is not already installed, install it using pip:
-
-```bash
-pip install hatch hatchling
-```
-
-### Step 3: Create and Activate the Virtual Environment
-
-Inside the project directory, create a virtual environment using Hatch:
+## Setting up
 
 ```bash
-hatch env create
+# Clone with submodules
+git clone --recurse-submodules https://github.com/JSv4/Python-Redlines
+cd Python-Redlines
+
+# Or, if already cloned:
+git submodule update --init --recursive
+
+# Build the engine binaries for your platform
+python build_differ.py linux-x64        # or win-x64 / osx-arm64 / ...
+
+# Install all three packages editable, plus pytest
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
 ```
 
-Activate the virtual environment:
+## Building the C# binaries
+
+`build_differ.py` compiles an engine for one or more .NET runtime identifiers (RIDs)
+and writes a single flat archive into each binary package's `_binaries/` directory.
 
 ```bash
-hatch shell
+python build_differ.py linux-x64                 # one platform
+python build_differ.py linux-x64 win-x64          # several
+python build_differ.py --all                      # all six RIDs
 ```
 
-### Step 4: Install Dependencies
+Valid RIDs: `linux-x64`, `linux-arm64`, `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`.
 
-Install the necessary Python dependencies:
+Under the hood this runs `dotnet publish -c Release -r <rid> --self-contained` for
+`csproj/` (Open-XML-PowerTools) and `docxodus/tools/redline/` (Docxodus), then
+compresses each `publish/` output into `<rid>.tar.gz` (or `.zip` on Windows).
+
+## Building wheels
+
+A binary-package wheel must contain **exactly one** platform archive, so build one RID
+at a time:
 
 ```bash
-pip install .[dev]
+python build_differ.py linux-x64
+python -m build --wheel packages/ooxmlpowertools
+python -m build --wheel packages/docxodus
 ```
 
-## Building the C# Binaries
-
-You can use the binaries distributed with the project, or, if you want to build new binaries for some reason, you can
-use our build script, integrated as a hatch tool. 
+The core package is pure Python and platform-independent:
 
 ```bash
-hatch run build
+python -m build packages/core
 ```
 
-### Under the Hood
+Each binary package's `hatch_build.py` build hook detects the RID of the archive in
+`_binaries/` and stamps the wheel with the matching platform tag (e.g.
+`manylinux2014_x86_64`, `macosx_11_0_arm64`, `win_amd64`).
 
-We're just using dotnet to build binaries for [Program.cs](csproj/Program.cs), a command line utility that exposes 
-`WmlComparer's` redlining capabilities. We are currently target win-x64 and linux-x64 builds, but any runtime
-[supported by .NET](https://learn.microsoft.com/en-us/dotnet/core/rid-catalog) is theoretically supported. 
+## Running tests
 
-**Our build script does the following:**
-
-1. Build a binary for Linux:
+Run from the repository root (test fixtures use relative paths):
 
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained
+python -m pytest tests/
 ```
 
-2. Build a binary for Windows:
+Tests require all three packages installed and the engine binaries built for the
+current platform.
 
-```bash
-dotnet publish -c Release -r win-x64 --self-contained
-```
+## Releasing
 
-3. Build a binary for MacOS:
-
-```bash
-dotnet publish -c Release -r osx-x64 --self-contained
-```
-
-4. Archive and package binaries into `./dist/`:
-
-
-## Running Tests
-
-To ensure everything is set up correctly and working as expected, run the tests included in the `tests/` directory.
-Execute the tests using pytest:
-
-```bash
-pytest
-```
-
-This will run all the test cases defined in your test files.
-
-## Conclusion
-
-You've now set up the Python-Docx-Redlines project, built the necessary C# binaries, and learned how to use the Python wrapper to compare `.docx` files. Running the tests ensures that your setup is correct and the wrapper functions as expected.
+`.github/workflows/python-publish.yml` runs on a published GitHub release: it builds
+per-platform engine wheels across three OS runners, builds the core sdist + wheel, and
+publishes all three packages to PyPI. Bump the version in
+`packages/core/src/python_redlines/__about__.py` only — the binary packages read it
+from there, so all three always release in lockstep.

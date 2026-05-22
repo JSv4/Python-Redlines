@@ -1,104 +1,129 @@
-import subprocess
-import tempfile
+import importlib.metadata
+import importlib.resources
+import logging
 import os
 import platform
-import logging
-import zipfile
+import subprocess
 import tarfile
+import tempfile
+import zipfile
 from pathlib import Path
-from typing import Union, Tuple, Optional
+from typing import Optional, Tuple, Union
+
+import platformdirs
 
 from .__about__ import __version__
 
 logger = logging.getLogger(__name__)
 
 
+class EngineNotInstalledError(ImportError):
+    """Raised when an engine is used but its binary package is not installed."""
+
+
+def _detect_rid() -> str:
+    """Return the .NET-style runtime identifier for the current platform."""
+    os_name = platform.system().lower()
+    machine = platform.machine().lower()
+
+    if machine in ('x86_64', 'amd64'):
+        arch = 'x64'
+    elif machine in ('arm64', 'aarch64'):
+        arch = 'arm64'
+    else:
+        raise EnvironmentError(f"Unsupported architecture: {machine}")
+
+    if os_name == 'linux':
+        return f'linux-{arch}'
+    if os_name == 'windows':
+        return f'win-{arch}'
+    if os_name == 'darwin':
+        return f'osx-{arch}'
+    raise EnvironmentError(f"Unsupported OS: {os_name}")
+
+
 class BaseEngine(object):
     """
-    Base class for redline comparison engines. Subclasses must define:
-      - DIST_DIR_NAME: directory name under src/python_redlines/ holding compressed binaries
-      - BIN_DIR_NAME: directory name under src/python_redlines/ for extracted binaries
-      - BINARY_BASE_NAME: the name of the executable (without .exe extension)
+    Base class for redline comparison engines. Each engine ships its compiled
+    binary in a separate, optional companion package; subclasses declare:
+      - BINARY_PACKAGE: importable package name that ships the binary archives
+      - BINARY_BASE_NAME: the executable name (without .exe extension)
+      - EXTRA_NAME: the python-redlines extra that installs the companion package
     """
-    DIST_DIR_NAME: str = NotImplemented
-    BIN_DIR_NAME: str = NotImplemented
+    BINARY_PACKAGE: str = NotImplemented
     BINARY_BASE_NAME: str = NotImplemented
+    EXTRA_NAME: str = NotImplemented
 
     def __init__(self, target_path: Optional[str] = None):
         self.target_path = target_path
-        self.extracted_binaries_path = self._unzip_binary()
+        self.extracted_binaries_path = self._resolve_binary()
 
-    def _unzip_binary(self):
+    def _resolve_binary(self) -> str:
         """
-        Unzips the appropriate C# binary for the current platform.
+        Locate the platform binary inside the companion package, extracting it
+        once into a writable cache directory. Returns the path to the executable.
         """
-        base_path = os.path.dirname(__file__)
-        binaries_path = os.path.join(base_path, self.DIST_DIR_NAME)
-        target_path = self.target_path if self.target_path else os.path.join(base_path, self.BIN_DIR_NAME)
+        rid = _detect_rid()
+        is_windows = rid.startswith('win-')
+        archive_name = f'{rid}.zip' if is_windows else f'{rid}.tar.gz'
+        binary_name = f'{self.BINARY_BASE_NAME}.exe' if is_windows else self.BINARY_BASE_NAME
 
-        if not os.path.exists(target_path):
-            os.makedirs(target_path)
+        try:
+            package_root = importlib.resources.files(self.BINARY_PACKAGE)
+        except ModuleNotFoundError as exc:
+            raise EngineNotInstalledError(
+                f"{type(self).__name__} requires the '{self.BINARY_PACKAGE}' package. "
+                f"Install it with:  pip install python-redlines[{self.EXTRA_NAME}]"
+            ) from exc
 
-        # Get the binary name and zip name based on the OS and architecture
-        binary_name, zip_name = self._get_binaries_info()
+        archive = package_root / '_binaries' / archive_name
+        if not archive.is_file():
+            raise EngineNotInstalledError(
+                f"{type(self).__name__}: '{self.BINARY_PACKAGE}' is installed but contains "
+                f"no binary for platform '{rid}'. The wheel may target a different platform."
+            )
 
-        # Check if the binary already exists. If not, extract it.
-        full_binary_path = os.path.join(target_path, binary_name)
+        extract_root = self._extraction_root() / rid
+        binary_path = extract_root / binary_name
 
-        if not os.path.exists(full_binary_path):
-            zip_path = os.path.join(binaries_path, zip_name)
-            self._extract_binary(zip_path, target_path)
+        if not binary_path.exists():
+            self._extract_archive(archive, extract_root)
 
-        return os.path.join(target_path, binary_name)
+        if not is_windows:
+            os.chmod(binary_path, 0o755)
 
-    def _extract_binary(self, zip_path: str, target_path: str):
-        """
-        Extracts the binary from the zip file based on the extension. Supports .zip and .tar.gz files
-        :parameter
-            zip_path: str - The path to the zip file
-            target_path: str - The path to extract the binary to
-        """
-        if zip_path.endswith('.zip'):
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(target_path)
+        return str(binary_path)
 
-        elif zip_path.endswith('.tar.gz'):
-            with tarfile.open(zip_path, 'r:gz') as tar_ref:
-                tar_ref.extractall(target_path)
+    def _extraction_root(self) -> Path:
+        """Directory the binary is extracted into (writable, outside site-packages)."""
+        if self.target_path:
+            return Path(self.target_path)
 
-    def _get_binaries_info(self):
-        """
-        Returns the binary name and zip name based on the OS and architecture
-        :return
-            binary_name: str - The name of the binary file
-            zip_name: str - The name of the zip file
-        """
-        os_name = platform.system().lower()
-        arch = platform.machine().lower()
+        try:
+            pkg_version = importlib.metadata.version(self.BINARY_PACKAGE.replace('_', '-'))
+        except importlib.metadata.PackageNotFoundError:
+            pkg_version = __version__
 
-        if arch in ('x86_64', 'amd64'):
-            arch = 'x64'
-        elif arch in ('arm64', 'aarch64'):
-            arch = 'arm64'
-        else:
-            raise EnvironmentError(f"Unsupported architecture: {arch}")
+        return Path(platformdirs.user_cache_dir('python-redlines')) / self.EXTRA_NAME / pkg_version
 
-        if os_name == 'linux':
-            zip_name = f"linux-{arch}-{__version__}.tar.gz"
-            binary_name = f'linux-{arch}/{self.BINARY_BASE_NAME}'
+    @staticmethod
+    def _extract_archive(archive, target_path: Path):
+        """Extract a .zip or .tar.gz archive (a Traversable) into target_path."""
+        target_path.mkdir(parents=True, exist_ok=True)
+        name = archive.name
 
-        elif os_name == 'windows':
-            zip_name = f"win-{arch}-{__version__}.zip"
-            binary_name = f'win-{arch}/{self.BINARY_BASE_NAME}.exe'
-
-        elif os_name == 'darwin':
-            zip_name = f"osx-{arch}-{__version__}.tar.gz"
-            binary_name = f'osx-{arch}/{self.BINARY_BASE_NAME}'
-
-        else:
-            raise EnvironmentError("Unsupported OS")
-
-        return binary_name, zip_name
+        with importlib.resources.as_file(archive) as archive_path:
+            if name.endswith('.zip'):
+                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                    zip_ref.extractall(target_path)
+            elif name.endswith('.tar.gz'):
+                with tarfile.open(archive_path, 'r:gz') as tar_ref:
+                    try:
+                        tar_ref.extractall(target_path, filter='data')
+                    except TypeError:
+                        tar_ref.extractall(target_path)
+            else:
+                raise ValueError(f"Unsupported archive format: {name}")
 
     def _build_command(self, author_tag: str, original_path, modified_path, target_path, **kwargs):
         """
@@ -159,15 +184,15 @@ class BaseEngine(object):
 
 
 class XmlPowerToolsEngine(BaseEngine):
-    DIST_DIR_NAME = 'dist'
-    BIN_DIR_NAME = 'bin'
+    BINARY_PACKAGE = 'python_redlines_ooxmlpowertools'
     BINARY_BASE_NAME = 'redlines'
+    EXTRA_NAME = 'ooxmlpowertools'
 
 
 class DocxodusEngine(BaseEngine):
-    DIST_DIR_NAME = 'dist_docxodus'
-    BIN_DIR_NAME = 'bin_docxodus'
+    BINARY_PACKAGE = 'python_redlines_docxodus'
     BINARY_BASE_NAME = 'redline'
+    EXTRA_NAME = 'docxodus'
 
     # Boolean flags (default False — presence enables)
     _BOOL_FLAGS = [

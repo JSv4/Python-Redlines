@@ -1,22 +1,49 @@
 # Python-Redlines: Docx Redlines (Tracked Changes) for the Python Ecosystem
 
-## Project Goal - Democratizing DOCX Comparisons
+Generate tracked-change "redline" `.docx` documents from Python — compare two Word files
+and get back a third document showing every insertion, deletion, and (optionally) move as
+native Word tracked changes.
 
-The main goal of this project is to address the significant gap in the open-source ecosystem around `.docx` document
-comparison tools. Currently, the process of comparing and generating redline documents (documents that highlight
-changes between versions) is complex and largely dominated by commercial software. These
-tools, while effective, often come with cost barriers and limitations in terms of accessibility and integration
-flexibility.
+Comparing `.docx` documents has long been dominated by commercial software, with cost
+barriers and little integration flexibility. Python-Redlines brings open-source `.docx`
+redlining to the Python ecosystem so legal hackers, hobbyists, and product teams can build
+on it freely: two documents in, one redline out.
 
-`Python-redlines` aims to democratize the ability to run tracked change redlines for .docx, providing the
-open-source community with a tool to create `.docx` redlines without the need for commercial software. This will let
-more legal hackers and hobbyist innovators experiment and create tooling for enterprise and legal.
+## Quick Start
+
+The **default engine is [Docxodus](https://github.com/JSv4/Docxodus)** — a modernized,
+actively-maintained .NET 8 comparison engine (detailed below). Install it and you're
+running; the engine binary is prebuilt and embedded in the wheel, so there is **no .NET
+SDK to install and nothing to compile**:
+
+```commandline
+pip install python-redlines[docxodus]
+```
+
+```python
+from python_redlines import DocxodusEngine
+
+with open("original.docx", "rb") as f:
+    original = f.read()
+with open("modified.docx", "rb") as f:
+    modified = f.read()
+
+engine = DocxodusEngine()
+redline_bytes, stdout, stderr = engine.run_redline("Reviewer", original, modified)
+
+with open("redline.docx", "wb") as f:
+    f.write(redline_bytes)
+```
+
+That's the whole thing. The rest of this README covers the second (legacy) engine,
+comparison settings, and how the packages are built and distributed.
 
 ## Comparison Engines
 
-Python-Redlines ships with **two comparison engines** — choose the one that best fits your needs:
+Python-Redlines provides **two comparison engines**. `DocxodusEngine` is the default and
+recommended choice; `XmlPowerToolsEngine` remains available as a legacy option.
 
-### `DocxodusEngine` — Recommended
+### `DocxodusEngine` — Default (Recommended)
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is a modernized .NET 8.0 fork of Open-XML-PowerTools with
 significant improvements:
@@ -56,41 +83,28 @@ Both engines share the same API — the only difference is the class you instant
 
 ### Install the Library
 
+The comparison engines are compiled .NET binaries, but they are **prebuilt and embedded
+in the published wheels** — you do not need the .NET SDK (or any local compilation) to
+install or use `python-redlines`.
+
+Each engine ships in its own optional companion package. Install the engine(s) you need
+as extras:
+
 ```commandline
-pip install git+https://github.com/JSv4/Python-Redlines
+pip install python-redlines[docxodus]          # Docxodus engine
+pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine
+pip install python-redlines[all]                # both engines
 ```
 
-You can add this as a dependency like so:
-
-```requirements
-python_redlines @ git+https://github.com/JSv4/Python-Redlines@v0.0.4
-```
+Prebuilt wheels are available for Linux, macOS, and Windows (x64 and arm64); `pip`
+selects the wheel matching your platform automatically. Instantiating an engine whose
+companion package is not installed raises `EngineNotInstalledError` telling you which
+extra to install.
 
 ### Use the Library
 
-If you just want to use the tool, jump into our [quickstart guide](docs/quickstart.md).
-
-### Quick Example
-
-```python
-from python_redlines import DocxodusEngine
-
-# Load your documents as bytes
-with open("original.docx", "rb") as f:
-    original = f.read()
-with open("modified.docx", "rb") as f:
-    modified = f.read()
-
-# Generate a redline document
-engine = DocxodusEngine()
-redline_bytes, stdout, stderr = engine.run_redline("Reviewer", original, modified)
-
-# Save the result
-with open("redline.docx", "wb") as f:
-    f.write(redline_bytes)
-
-print(stdout)  # e.g. "Redline complete: 9 revision(s) found"
-```
+See the [Quick Start](#quick-start) above for a minimal example, or the
+[quickstart guide](docs/quickstart.md) for a step-by-step walkthrough.
 
 ## Comparison Settings (DocxodusEngine only)
 
@@ -131,43 +145,42 @@ redline_bytes, stdout, stderr = engine.run_redline(
 ## Architecture Overview
 
 Both engines follow the same pattern: a Python wrapper class invokes a self-contained C# binary via subprocess.
-The binary takes four arguments: `<author_tag> <original.docx> <modified.docx> <output.docx>`.
+
+The repository is a **monorepo of three separately-published packages**:
+
+| Package | PyPI name | Contents |
+|---|---|---|
+| `packages/core` | `python-redlines` | Pure-Python wrapper; no binaries |
+| `packages/ooxmlpowertools` | `python-redlines-ooxmlpowertools` | Open-XML-PowerTools engine binary |
+| `packages/docxodus` | `python-redlines-docxodus` | Docxodus engine binary |
+
+The core package's `[docxodus]` / `[ooxmlpowertools]` / `[all]` extras pull in the
+binary packages. Each binary package is published as **per-platform wheels** (Linux,
+macOS, Windows × x64/arm64), each embedding one prebuilt, self-contained .NET binary.
 
 ```
 python-redlines/
 │
 ├── csproj/                          # XmlPowerTools C# source
-│   ├── Program.cs
-│   └── redlines.csproj
+├── docxodus/                        # Docxodus git submodule (tools/redline/)
 │
-├── docxodus/                        # Docxodus git submodule
-│   └── tools/redline/
-│       ├── Program.cs
-│       └── redline.csproj
+├── packages/
+│   ├── core/                        # -> python-redlines
+│   │   └── src/python_redlines/     #    engines.py, __init__.py, __about__.py
+│   ├── ooxmlpowertools/             # -> python-redlines-ooxmlpowertools
+│   │   ├── hatch_build.py           #    stamps the wheel platform tag
+│   │   └── src/python_redlines_ooxmlpowertools/_binaries/
+│   └── docxodus/                    # -> python-redlines-docxodus
+│       ├── hatch_build.py
+│       └── src/python_redlines_docxodus/_binaries/
 │
-├── src/
-│   └── python_redlines/
-│       ├── engines.py               # BaseEngine, XmlPowerToolsEngine, DocxodusEngine
-│       ├── dist/                    # XmlPowerTools compressed binaries
-│       ├── dist_docxodus/           # Docxodus compressed binaries
-│       ├── bin/                     # XmlPowerTools extracted binaries (runtime)
-│       ├── bin_docxodus/            # Docxodus extracted binaries (runtime)
-│       ├── __about__.py
-│       └── __init__.py
-│
-├── tests/
-│   ├── fixtures/
-│   ├── test_openxml_differ.py       # XmlPowerTools integration test
-│   ├── test_docxodus_engine.py      # Docxodus integration test
-│   └── test_engine_contract.py      # Shared contract tests for both engines
-│
-├── build_differ.py                  # Builds both engines for all platforms
-├── pyproject.toml
-└── README.md
+├── tests/                           # integration + contract tests (run from root)
+├── build_differ.py                  # compiles engines into each package's _binaries/
+└── pyproject.toml                   # shared pytest/coverage config only
 ```
 
-Pre-compiled binaries for 6 platform targets (linux/win/osx x x64/arm64) are bundled in the wheel for each engine.
-On first use, the appropriate binary is extracted and cached.
+At runtime the wrapper finds its companion binary package via `importlib.resources`,
+extracts the platform archive once into the user cache directory, and runs it.
 
 ### Stdout Differences
 
@@ -182,8 +195,8 @@ The two engines produce slightly different stdout messages:
 
 ### Prerequisites
 
-- Python 3.8+
-- .NET 8.0 SDK (for building C# binaries)
+- Python 3.9+
+- .NET 8.0 SDK (only for building the engine binaries locally)
 
 ### Setup
 
@@ -194,22 +207,29 @@ cd Python-Redlines
 
 # If you already cloned without submodules
 git submodule update --init --recursive
+
+# Build the engine binaries for your platform (RIDs: linux-x64, win-x64, osx-arm64, ...)
+python build_differ.py linux-x64
+
+# Install all three packages editable
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
 ```
 
 ### Commands
 
 ```bash
-# Run tests
-hatch run test
+# Run tests (from the repo root)
+python -m pytest tests/
 
 # Run a single test
-hatch run test tests/test_openxml_differ.py::test_run_redlines_with_real_files
+python -m pytest tests/test_openxml_differ.py::test_run_redlines_with_real_files
 
-# Build C# binaries for all platforms
-hatch run build
+# Build engine binaries for one or more platforms
+python build_differ.py linux-x64 win-x64
+python build_differ.py --all
 
-# Build Python package
-hatch build
+# Build a package wheel
+python -m build packages/core
 ```
 
 ### Detailed Dev Setup
