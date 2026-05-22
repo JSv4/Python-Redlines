@@ -9,6 +9,10 @@ csproj/obj/*
 docxodus/**/bin/*
 docxodus/**/obj/*
 
+# Engine binary archives (built by build_differ.py, embedded in wheels by CI)
+packages/*/src/*/_binaries/*.tar.gz
+packages/*/src/*/_binaries/*.zip
+
 # C extensions
 *.so
 

@@ -1,7 +1,17 @@
 # Python-Redlines Quickstart
 
-As discussed in the main README, the initial version is a wrapper for the C# api provided by Open-XML-PowerTools and
-`WmlComparer`. This readme will show you how to use the XmlPowerToolsEngine to run a redline. 
+`python-redlines` wraps a C# comparison engine to produce tracked-change redline `.docx`
+files. This guide uses the `XmlPowerToolsEngine` (Open-XML-PowerTools); `DocxodusEngine`
+works the same way.
+
+### Step 0: Install
+
+Install the core package plus the engine you want as an extra. No .NET SDK is needed —
+the engine binary is prebuilt and embedded in the wheel.
+
+```commandline
+pip install python-redlines[ooxmlpowertools]
+```
 
 ### Step 1: Import and Initialize the Wrapper
 

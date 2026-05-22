@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "python-redlines"
+dynamic = ["version"]
+description = "Generate tracked-change redline .docx documents by comparing Word files."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["docx", "redline", "diff", "tracked-changes", "openxml", "word"]
+authors = [
+  { name = "John Scrudato IV" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+  "platformdirs>=3.0",
+]
+
+# Engine binaries ship in separate companion packages. Install an engine via
+# its extra, e.g. `pip install python-redlines[docxodus]`. All three packages
+# are released together from the same repository on each tagged release.
+[project.optional-dependencies]
+ooxmlpowertools = ["python-redlines-ooxmlpowertools"]
+docxodus = ["python-redlines-docxodus"]
+all = ["python-redlines-ooxmlpowertools", "python-redlines-docxodus"]
+
+[project.urls]
+Homepage = "https://github.com/JSv4/Python-Redlines"
+Issues = "https://github.com/JSv4/Python-Redlines/issues"
+Source = "https://github.com/JSv4/Python-Redlines"
+
+[tool.hatch.version]
+path = "src/python_redlines/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/python_redlines"]
