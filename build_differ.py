@@ -4,6 +4,16 @@ import tarfile
 import zipfile
 
 
+RIDS = [
+    ("linux-x64", ".tar.gz"),
+    ("linux-arm64", ".tar.gz"),
+    ("win-x64", ".zip"),
+    ("win-arm64", ".zip"),
+    ("osx-x64", ".tar.gz"),
+    ("osx-arm64", ".tar.gz"),
+]
+
+
 def get_version():
     """
     Extracts the version from the specified __about__.py file.
@@ -16,11 +26,14 @@ def get_version():
 
 def run_command(command):
     """
-    Runs a shell command and prints its output.
+    Runs a shell command and prints its output. Raises on non-zero exit code.
     """
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in process.stdout:
         print(line.decode().strip())
+    process.wait()
+    if process.returncode != 0:
+        raise RuntimeError(f"Command failed with exit code {process.returncode}: {command}")
 
 
 def compress_files(source_dir, target_file):
@@ -50,57 +63,47 @@ def cleanup_old_builds(dist_dir, current_version):
             print(f"Deleted old build file: {file}")
 
 
+def build_engine(csproj_path, dist_dir, version):
+    """
+    Builds a C# engine for all platform targets, compresses the output, and cleans up old builds.
+
+    :param csproj_path: Path to the .csproj directory (e.g. './csproj' or './docxodus/tools/redline')
+    :param dist_dir: Path to the distribution directory for compressed binaries
+    :param version: Version string for archive naming
+    """
+    # Build for each RID
+    for rid, _ in RIDS:
+        print(f"Building {csproj_path} for {rid}...")
+        run_command(f'dotnet publish {csproj_path} -c Release -r {rid} --self-contained')
+
+    # Determine the build output base directory
+    # dotnet publish outputs to <csproj_path>/bin/Release/net8.0/<rid>
+    build_base = os.path.join(csproj_path, 'bin', 'Release', 'net8.0')
+
+    # Compress each build
+    for rid, ext in RIDS:
+        build_dir = os.path.join(build_base, rid)
+        archive_path = os.path.join(dist_dir, f"{rid}-{version}{ext}")
+        print(f"Compressing {rid} to {archive_path}...")
+        compress_files(build_dir, archive_path)
+
+    cleanup_old_builds(dist_dir, version)
+
+
 def main():
     version = get_version()
     print(f"Version: {version}")
 
-    dist_dir = "./src/python_redlines/dist/"
+    # Build the XmlPowerTools engine (original)
+    build_engine('./csproj', './src/python_redlines/dist/', version)
 
-    # Build for Linux x64
-    print("Building for Linux x64...")
-    run_command('dotnet publish ./csproj -c Release -r linux-x64 --self-contained')
-
-    # Build for Linux ARM64
-    print("Building for Linux ARM64...")
-    run_command('dotnet publish ./csproj -c Release -r linux-arm64 --self-contained')
-
-    # Build for Windows x64
-    print("Building for Windows x64...")
-    run_command('dotnet publish ./csproj -c Release -r win-x64 --self-contained')
-
-    # Build for Windows ARM64
-    print("Building for Windows ARM64...")
-    run_command('dotnet publish ./csproj -c Release -r win-arm64 --self-contained')
-
-    # Build for macOS x64
-    print("Building for macOS x64...")
-    run_command('dotnet publish ./csproj -c Release -r osx-x64 --self-contained')
-
-    # Build for macOS ARM64
-    print("Building for macOS ARM64...")
-    run_command('dotnet publish ./csproj -c Release -r osx-arm64 --self-contained')
-
-    # Compress the Linux x64 build
-    linux_x64_build_dir = './csproj/bin/Release/net8.0/linux-x64'
-    compress_files(linux_x64_build_dir, f"{dist_dir}/linux-x64-{version}.tar.gz")
-
-    # Compress the Linux ARM64 build
-    linux_arm64_build_dir = './csproj/bin/Release/net8.0/linux-arm64'
-    compress_files(linux_arm64_build_dir, f"{dist_dir}/linux-arm64-{version}.tar.gz")
-
-    # Compress the Windows x64 build
-    windows_build_dir = './csproj/bin/Release/net8.0/win-x64'
-    compress_files(windows_build_dir, f"{dist_dir}/win-x64-{version}.zip")
-
-    # Compress the macOS x64 build
-    macos_x64_build_dir = './csproj/bin/Release/net8.0/osx-x64'
-    compress_files(macos_x64_build_dir, f"{dist_dir}/osx-x64-{version}.tar.gz")
-
-    # Compress the macOS ARM64 build
-    macos_arm64_build_dir = './csproj/bin/Release/net8.0/osx-arm64'
-    compress_files(macos_arm64_build_dir, f"{dist_dir}/osx-arm64-{version}.tar.gz")
-
-    cleanup_old_builds(dist_dir, version)
+    # Build the Docxodus engine (if submodule is available)
+    docxodus_csproj = './docxodus/tools/redline'
+    if os.path.exists(os.path.join(docxodus_csproj, 'redline.csproj')):
+        build_engine(docxodus_csproj, './src/python_redlines/dist_docxodus/', version)
+    else:
+        print("WARNING: Docxodus submodule not found at docxodus/tools/redline/redline.csproj — skipping Docxodus build.")
+        print("Run 'git submodule update --init --recursive' to initialize the submodule.")
 
     print("Build and compression complete.")
 

@@ -1,0 +1,3 @@
+[submodule "docxodus"]
+	path = docxodus
+	url = https://github.com/JSv4/Docxodus.git

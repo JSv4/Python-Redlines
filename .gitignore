@@ -6,6 +6,8 @@ __pycache__/
 # C# Build Dirs
 csproj/bin/*
 csproj/obj/*
+docxodus/**/bin/*
+docxodus/**/obj/*
 
 # C extensions
 *.so

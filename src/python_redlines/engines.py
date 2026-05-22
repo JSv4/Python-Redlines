@@ -13,35 +13,45 @@ from .__about__ import __version__
 logger = logging.getLogger(__name__)
 
 
-class XmlPowerToolsEngine(object):
+class BaseEngine(object):
+    """
+    Base class for redline comparison engines. Subclasses must define:
+      - DIST_DIR_NAME: directory name under src/python_redlines/ holding compressed binaries
+      - BIN_DIR_NAME: directory name under src/python_redlines/ for extracted binaries
+      - BINARY_BASE_NAME: the name of the executable (without .exe extension)
+    """
+    DIST_DIR_NAME: str = NotImplemented
+    BIN_DIR_NAME: str = NotImplemented
+    BINARY_BASE_NAME: str = NotImplemented
+
     def __init__(self, target_path: Optional[str] = None):
         self.target_path = target_path
-        self.extracted_binaries_path = self.__unzip_binary()
+        self.extracted_binaries_path = self._unzip_binary()
 
-    def __unzip_binary(self):
+    def _unzip_binary(self):
         """
         Unzips the appropriate C# binary for the current platform.
         """
         base_path = os.path.dirname(__file__)
-        binaries_path = os.path.join(base_path, 'dist')
-        target_path = self.target_path if self.target_path else os.path.join(base_path, 'bin')
+        binaries_path = os.path.join(base_path, self.DIST_DIR_NAME)
+        target_path = self.target_path if self.target_path else os.path.join(base_path, self.BIN_DIR_NAME)
 
         if not os.path.exists(target_path):
             os.makedirs(target_path)
 
         # Get the binary name and zip name based on the OS and architecture
-        binary_name, zip_name = self.__get_binaries_info()
+        binary_name, zip_name = self._get_binaries_info()
 
         # Check if the binary already exists. If not, extract it.
         full_binary_path = os.path.join(target_path, binary_name)
 
         if not os.path.exists(full_binary_path):
             zip_path = os.path.join(binaries_path, zip_name)
-            self.__extract_binary(zip_path, target_path)
+            self._extract_binary(zip_path, target_path)
 
         return os.path.join(target_path, binary_name)
 
-    def __extract_binary(self, zip_path: str, target_path: str):
+    def _extract_binary(self, zip_path: str, target_path: str):
         """
         Extracts the binary from the zip file based on the extension. Supports .zip and .tar.gz files
         :parameter
@@ -56,7 +66,7 @@ class XmlPowerToolsEngine(object):
             with tarfile.open(zip_path, 'r:gz') as tar_ref:
                 tar_ref.extractall(target_path)
 
-    def __get_binaries_info(self):
+    def _get_binaries_info(self):
         """
         Returns the binary name and zip name based on the OS and architecture
         :return
@@ -75,26 +85,38 @@ class XmlPowerToolsEngine(object):
 
         if os_name == 'linux':
             zip_name = f"linux-{arch}-{__version__}.tar.gz"
-            binary_name = f'linux-{arch}/redlines'
+            binary_name = f'linux-{arch}/{self.BINARY_BASE_NAME}'
 
         elif os_name == 'windows':
             zip_name = f"win-{arch}-{__version__}.zip"
-            binary_name = f'win-{arch}/redlines.exe'
+            binary_name = f'win-{arch}/{self.BINARY_BASE_NAME}.exe'
 
         elif os_name == 'darwin':
             zip_name = f"osx-{arch}-{__version__}.tar.gz"
-            binary_name = f'osx-{arch}/redlines'
+            binary_name = f'osx-{arch}/{self.BINARY_BASE_NAME}'
 
         else:
             raise EnvironmentError("Unsupported OS")
 
         return binary_name, zip_name
 
-    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path]) \
+    def _build_command(self, author_tag: str, original_path, modified_path, target_path, **kwargs):
+        """
+        Build the command list for subprocess execution.
+        Subclasses can override to customize argument format.
+        """
+        return [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
+
+    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path], **kwargs) \
             -> Tuple[bytes, Optional[str], Optional[str]]:
         """
-        Runs the redlines binary. The 'original' and 'modified' arguments can be either bytes or file paths.
+        Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths.
         Returns the redline output as bytes.
+
+        Additional keyword arguments are passed to _build_command() for engine-specific options.
+        DocxodusEngine supports: detail_threshold, case_insensitive, detect_moves,
+        simplify_move_markup, move_similarity_threshold, move_minimum_word_count,
+        detect_format_changes, conflate_spaces, date_time.
         """
         temp_files = []
         try:
@@ -104,7 +126,7 @@ class XmlPowerToolsEngine(object):
             modified_path = self._write_to_temp_file(modified) if isinstance(modified, bytes) else modified
             temp_files.extend([target_path, original_path, modified_path])
 
-            command = [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
+            command = self._build_command(author_tag, original_path, modified_path, target_path, **kwargs)
 
             # Capture stdout and stderr
             result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -134,3 +156,73 @@ class XmlPowerToolsEngine(object):
         temp_file.write(data)
         temp_file.close()
         return temp_file.name
+
+
+class XmlPowerToolsEngine(BaseEngine):
+    DIST_DIR_NAME = 'dist'
+    BIN_DIR_NAME = 'bin'
+    BINARY_BASE_NAME = 'redlines'
+
+
+class DocxodusEngine(BaseEngine):
+    DIST_DIR_NAME = 'dist_docxodus'
+    BIN_DIR_NAME = 'bin_docxodus'
+    BINARY_BASE_NAME = 'redline'
+
+    # Boolean flags (default False — presence enables)
+    _BOOL_FLAGS = [
+        ('case_insensitive', '--case-insensitive'),
+        ('detect_moves', '--detect-moves'),
+        ('simplify_move_markup', '--simplify-move-markup'),
+    ]
+
+    # Negatable flags (default True — --no- prefix disables)
+    _NEG_FLAGS = [
+        ('detect_format_changes', '--no-detect-format-changes'),
+        ('conflate_spaces', '--no-conflate-spaces'),
+    ]
+
+    # Value flags
+    _VALUE_FLAGS = [
+        ('detail_threshold', '--detail-threshold'),
+        ('move_similarity_threshold', '--move-similarity-threshold'),
+        ('move_minimum_word_count', '--move-minimum-word-count'),
+        ('date_time', '--date-time'),
+    ]
+
+    @staticmethod
+    def _validate_kwargs(kwargs):
+        if 'detail_threshold' in kwargs:
+            val = kwargs['detail_threshold']
+            if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
+                raise ValueError(f"detail_threshold must be a float between 0.0 and 1.0, got {val!r}")
+
+        if 'move_similarity_threshold' in kwargs:
+            val = kwargs['move_similarity_threshold']
+            if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
+                raise ValueError(f"move_similarity_threshold must be a float between 0.0 and 1.0, got {val!r}")
+
+        if 'move_minimum_word_count' in kwargs:
+            val = kwargs['move_minimum_word_count']
+            if not isinstance(val, int) or val < 1:
+                raise ValueError(f"move_minimum_word_count must be a positive integer, got {val!r}")
+
+    def _build_command(self, author_tag, original_path, modified_path, target_path, **kwargs):
+        self._validate_kwargs(kwargs)
+
+        cmd = [self.extracted_binaries_path, original_path, modified_path, target_path,
+               f'--author={author_tag}']
+
+        for kwarg, flag in self._BOOL_FLAGS:
+            if kwargs.get(kwarg):
+                cmd.append(flag)
+
+        for kwarg, neg_flag in self._NEG_FLAGS:
+            if kwarg in kwargs and not kwargs[kwarg]:
+                cmd.append(neg_flag)
+
+        for kwarg, flag in self._VALUE_FLAGS:
+            if kwarg in kwargs:
+                cmd.append(f'{flag}={kwargs[kwarg]}')
+
+        return cmd
