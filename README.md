@@ -55,6 +55,18 @@ a level of maturity similar to WmlComparer. At the moment it is NOT included.
 
 ## Getting started
 
+> **Cloning slowly?** Older commits in this repository include large build
+> artifacts (~1 GB total) that are no longer part of the project. If you only
+> need the current code, skip that history with a shallow or blobless clone:
+>
+> ```bash
+> # Fastest — latest commit only:
+> git clone --depth=1 https://github.com/JSv4/Python-Redlines.git
+>
+> # Full history, but download file contents lazily (skips the old archives):
+> git clone --filter=blob:none https://github.com/JSv4/Python-Redlines.git
+> ```
+
 ### Install .NET Core 8
 
 The Open-XML-PowerTools engine we're using in the initial releases requires .NET to run (don't worry, this is very 
