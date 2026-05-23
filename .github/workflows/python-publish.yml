@@ -64,19 +64,15 @@ jobs:
   publish:
     needs: [build-core, build-engine-wheels]
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
     steps:
     - uses: actions/download-artifact@v4
       with:
         path: dist
         merge-multiple: true
-    - uses: actions/setup-python@v5
+    - uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        python-version: '3.11'
-    - run: pip install twine
-    - name: Check distributions
-      run: twine check dist/*
-    - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload dist/*
+        packages-dir: dist
