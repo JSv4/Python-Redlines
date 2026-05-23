@@ -132,11 +132,11 @@ class BaseEngine(object):
         """
         return [self.extracted_binaries_path, author_tag, original_path, modified_path, target_path]
 
-    def run_redline(self, author_tag: str, original: Union[bytes, Path], modified: Union[bytes, Path], **kwargs) \
-            -> Tuple[bytes, Optional[str], Optional[str]]:
+    def run_redline(self, author_tag: str, original: Union[str, bytes, Path], modified: Union[str, bytes, Path],
+                    **kwargs) -> Tuple[bytes, Optional[str], Optional[str]]:
         """
-        Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths.
-        Returns the redline output as bytes.
+        Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths
+        (as ``str`` or ``pathlib.Path``). Returns the redline output as bytes.
 
         Additional keyword arguments are passed to _build_command() for engine-specific options.
         DocxodusEngine supports: detail_threshold, case_insensitive, detect_moves,
