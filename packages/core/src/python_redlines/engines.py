@@ -189,6 +189,18 @@ class XmlPowerToolsEngine(BaseEngine):
     EXTRA_NAME = 'ooxmlpowertools'
 
 
+class ClippitEngine(BaseEngine):
+    """Wraps Clippit, an actively-maintained .NET 8 fork of Open-XML-PowerTools.
+
+    Uses the same WmlComparer API and the legacy 4-positional-arg CLI format as
+    XmlPowerToolsEngine, so it inherits BaseEngine._build_command() unchanged and
+    ignores engine-specific kwargs.
+    """
+    BINARY_PACKAGE = 'python_redlines_clippit'
+    BINARY_BASE_NAME = 'clippit'
+    EXTRA_NAME = 'clippit'
+
+
 class DocxodusEngine(BaseEngine):
     BINARY_PACKAGE = 'python_redlines_docxodus'
     BINARY_BASE_NAME = 'redline'

@@ -5,6 +5,7 @@
 from .__about__ import __version__
 from .engines import (
     BaseEngine,
+    ClippitEngine,
     DocxodusEngine,
     EngineNotInstalledError,
     XmlPowerToolsEngine,
@@ -13,6 +14,7 @@ from .engines import (
 __all__ = [
     "BaseEngine",
     "XmlPowerToolsEngine",
+    "ClippitEngine",
     "DocxodusEngine",
     "EngineNotInstalledError",
     "__version__",
