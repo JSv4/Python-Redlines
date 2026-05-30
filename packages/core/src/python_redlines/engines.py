@@ -197,7 +197,7 @@ class ClippitEngine(BaseEngine):
     ignores engine-specific kwargs.
     """
     BINARY_PACKAGE = 'python_redlines_clippit'
-    BINARY_BASE_NAME = 'clippit'
+    BINARY_BASE_NAME = 'clippit-redline'
     EXTRA_NAME = 'clippit'
 
 

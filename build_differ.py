@@ -33,7 +33,7 @@ ENGINES = [
     {
         "name": "clippit",
         "csproj": os.path.join("csproj-clippit"),
-        "csproj_file": os.path.join("csproj-clippit", "clippit.csproj"),
+        "csproj_file": os.path.join("csproj-clippit", "clippit-redline.csproj"),
         "binaries_dir": os.path.join(
             "packages", "clippit", "src",
             "python_redlines_clippit", "_binaries",

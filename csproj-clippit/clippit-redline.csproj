@@ -5,7 +5,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>clippit</AssemblyName>
+    <!-- Assembly/project id must not equal the referenced "Clippit" NuGet
+         package id (case-insensitive), or NuGet restore reports NU1108. -->
+    <AssemblyName>clippit-redline</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
