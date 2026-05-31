@@ -1,6 +1,6 @@
 import pytest
 
-from python_redlines.engines import XmlPowerToolsEngine, DocxodusEngine
+from python_redlines.engines import XmlPowerToolsEngine, ClippitEngine, DocxodusEngine
 
 
 def load_docx_bytes(file_path):
@@ -18,7 +18,7 @@ def modified_docx():
     return load_docx_bytes('tests/fixtures/modified.docx')
 
 
-@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
+@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, ClippitEngine, DocxodusEngine])
 def test_engine_returns_bytes(engine_class, original_docx, modified_docx):
     engine = engine_class()
     redline_output, stdout, stderr = engine.run_redline("TestAuthor", original_docx, modified_docx)
@@ -28,7 +28,7 @@ def test_engine_returns_bytes(engine_class, original_docx, modified_docx):
     assert len(redline_output) > 0
 
 
-@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
+@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, ClippitEngine, DocxodusEngine])
 def test_engine_no_stderr(engine_class, original_docx, modified_docx):
     engine = engine_class()
     _, _, stderr = engine.run_redline("TestAuthor", original_docx, modified_docx)
@@ -36,7 +36,7 @@ def test_engine_no_stderr(engine_class, original_docx, modified_docx):
     assert stderr is None
 
 
-@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
+@pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, ClippitEngine, DocxodusEngine])
 def test_engine_has_stdout(engine_class, original_docx, modified_docx):
     engine = engine_class()
     _, stdout, _ = engine.run_redline("TestAuthor", original_docx, modified_docx)
