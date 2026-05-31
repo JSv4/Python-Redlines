@@ -1,8 +1,9 @@
 name: Upload Python Package
 
-# Builds and publishes all three packages on a tagged release:
+# Builds and publishes all packages on a tagged release:
 #   python-redlines                  (core, pure-Python sdist + wheel)
 #   python-redlines-ooxmlpowertools  (per-platform engine wheels)
+#   python-redlines-clippit          (per-platform engine wheels)
 #   python-redlines-docxodus         (per-platform engine wheels)
 
 on:
@@ -54,6 +55,7 @@ jobs:
         for rid in ${{ matrix.rids }}; do
           python build_differ.py "$rid"
           python -m build --wheel --no-isolation packages/ooxmlpowertools --outdir dist
+          python -m build --wheel --no-isolation packages/clippit --outdir dist
           python -m build --wheel --no-isolation packages/docxodus --outdir dist
         done
     - uses: actions/upload-artifact@v4

@@ -40,8 +40,8 @@ comparison settings, and how the packages are built and distributed.
 
 ## Comparison Engines
 
-Python-Redlines provides **two comparison engines**. `DocxodusEngine` is the default and
-recommended choice; `XmlPowerToolsEngine` remains available as a legacy option.
+Python-Redlines provides **three comparison engines**. `DocxodusEngine` is the default and
+recommended choice; `ClippitEngine` and `XmlPowerToolsEngine` are also available.
 
 ### `DocxodusEngine` — Default (Recommended)
 
@@ -61,6 +61,19 @@ engine = DocxodusEngine()
 redline_bytes, stdout, stderr = engine.run_redline("AuthorName", original_bytes, modified_bytes)
 ```
 
+### `ClippitEngine`
+
+Wraps [Clippit](https://github.com/sergey-tihon/Clippit), an actively-maintained .NET 8 fork of
+Open-XML-PowerTools. It uses the same `WmlComparer` API as `XmlPowerToolsEngine` (same options and
+`Revisions found: N` stdout) but rides a maintained, modern dependency.
+
+```python
+from python_redlines import ClippitEngine
+
+engine = ClippitEngine()
+redline_bytes, stdout, stderr = engine.run_redline("AuthorName", original_bytes, modified_bytes)
+```
+
 ### `XmlPowerToolsEngine` — Legacy
 
 Wraps the original [Open-XML-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) `WmlComparer`. This
@@ -76,7 +89,7 @@ redline_bytes, stdout, stderr = engine.run_redline("AuthorName", original_bytes,
 > **Note:** Open-XML-PowerTools was archived by Microsoft and is no longer maintained. It uses an older
 > version of the Open XML SDK. While it works for many purposes, Docxodus is the recommended engine going forward.
 
-Both engines share the same API — the only difference is the class you instantiate and the stdout format
+All engines share the same API — the only difference is the class you instantiate and the stdout format
 (see [Stdout Differences](#stdout-differences) below).
 
 ## Getting Started
@@ -92,8 +105,9 @@ as extras:
 
 ```commandline
 pip install python-redlines[docxodus]          # Docxodus engine
+pip install python-redlines[clippit]           # Clippit engine (maintained OOXML PowerTools fork)
 pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine
-pip install python-redlines[all]                # both engines
+pip install python-redlines[all]                # all engines
 ```
 
 Prebuilt wheels are available for Linux, macOS, and Windows (x64 and arm64); `pip`
@@ -146,12 +160,13 @@ redline_bytes, stdout, stderr = engine.run_redline(
 
 Both engines follow the same pattern: a Python wrapper class invokes a self-contained C# binary via subprocess.
 
-The repository is a **monorepo of three separately-published packages**:
+The repository is a **monorepo of four separately-published packages**:
 
 | Package | PyPI name | Contents |
 |---|---|---|
 | `packages/core` | `python-redlines` | Pure-Python wrapper; no binaries |
 | `packages/ooxmlpowertools` | `python-redlines-ooxmlpowertools` | Open-XML-PowerTools engine binary |
+| `packages/clippit` | `python-redlines-clippit` | Clippit engine binary |
 | `packages/docxodus` | `python-redlines-docxodus` | Docxodus engine binary |
 
 The core package's `[docxodus]` / `[ooxmlpowertools]` / `[all]` extras pull in the
@@ -189,6 +204,7 @@ The two engines produce slightly different stdout messages:
 | Engine | Example stdout |
 |---|---|
 | `XmlPowerToolsEngine` | `Revisions found: 9` |
+| `ClippitEngine` | `Revisions found: 9` |
 | `DocxodusEngine` | `Redline complete: 9 revision(s) found` |
 
 ## Development
@@ -211,8 +227,8 @@ git submodule update --init --recursive
 # Build the engine binaries for your platform (RIDs: linux-x64, win-x64, osx-arm64, ...)
 python build_differ.py linux-x64
 
-# Install all three packages editable
-pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+# Install all packages editable
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/clippit -e packages/docxodus pytest
 ```
 
 ### Commands

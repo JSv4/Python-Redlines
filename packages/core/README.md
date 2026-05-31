@@ -8,8 +8,9 @@ the one(s) you need as extras:
 
 ```bash
 pip install python-redlines[docxodus]          # Docxodus engine
+pip install python-redlines[clippit]           # Clippit engine
 pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine
-pip install python-redlines[all]                # both
+pip install python-redlines[all]                # all
 ```
 
 Binaries are prebuilt for each platform and embedded in the companion package's

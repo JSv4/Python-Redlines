@@ -31,6 +31,15 @@ ENGINES = [
         ),
     },
     {
+        "name": "clippit",
+        "csproj": os.path.join("csproj-clippit"),
+        "csproj_file": os.path.join("csproj-clippit", "clippit-redline.csproj"),
+        "binaries_dir": os.path.join(
+            "packages", "clippit", "src",
+            "python_redlines_clippit", "_binaries",
+        ),
+    },
+    {
         "name": "docxodus",
         "csproj": os.path.join("docxodus", "tools", "redline"),
         "csproj_file": os.path.join("docxodus", "tools", "redline", "redline.csproj"),

@@ -28,12 +28,13 @@ dependencies = [
 ]
 
 # Engine binaries ship in separate companion packages. Install an engine via
-# its extra, e.g. `pip install python-redlines[docxodus]`. All three packages
-# are released together from the same repository on each tagged release.
+# its extra, e.g. `pip install python-redlines[docxodus]`. All packages are
+# released together from the same repository on each tagged release.
 [project.optional-dependencies]
 ooxmlpowertools = ["python-redlines-ooxmlpowertools"]
+clippit = ["python-redlines-clippit"]
 docxodus = ["python-redlines-docxodus"]
-all = ["python-redlines-ooxmlpowertools", "python-redlines-docxodus"]
+all = ["python-redlines-ooxmlpowertools", "python-redlines-clippit", "python-redlines-docxodus"]
 
 [project.urls]
 Homepage = "https://github.com/JSv4/Python-Redlines"

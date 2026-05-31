@@ -47,7 +47,7 @@ jobs:
       run: python build_differ.py ${{ steps.rid.outputs.rid }}
 
     - name: Install packages (editable)
-      run: pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+      run: pip install -e packages/core -e packages/ooxmlpowertools -e packages/clippit -e packages/docxodus pytest
 
     - name: Run tests
       run: python -m pytest tests/ -v
@@ -91,6 +91,7 @@ jobs:
         for rid in ${{ matrix.rids }}; do
           python build_differ.py "$rid"
           python -m build --wheel --no-isolation packages/ooxmlpowertools --outdir dist
+          python -m build --wheel --no-isolation packages/clippit --outdir dist
           python -m build --wheel --no-isolation packages/docxodus --outdir dist
         done
     - name: Check wheels
