@@ -282,3 +282,53 @@ def test_docxdiff_engine_check_precedes_range_check():
     engine = DocxodusEngine()
     with pytest.raises(ValueError, match="not supported by the 'docxdiff' engine"):
         engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", detail_threshold=1.5)
+
+
+# --- Engine selection, end to end ---
+
+def test_docxodus_default_engine_is_wmlcomparer(original_docx, modified_docx):
+    """The default path is the regression anchor: 9 revisions, exactly as before v7."""
+    engine = DocxodusEngine()
+    redline_output, stdout, stderr = engine.run_redline(
+        "TestAuthor", original_docx, modified_docx,
+    )
+    assert stderr is None
+    assert "Redline complete: 9 revision(s) found" in stdout
+    assert redline_output[:2] == b"PK"
+
+
+def test_docxodus_docxdiff_engine(original_docx, modified_docx):
+    """docxdiff is a different algorithm and finds a different number of revisions."""
+    engine = DocxodusEngine()
+    redline_output, stdout, stderr = engine.run_redline(
+        "TestAuthor", original_docx, modified_docx, engine="docxdiff",
+    )
+    assert stderr is None
+    assert "Redline complete: 11 revision(s) found" in stdout
+    assert redline_output[:2] == b"PK"
+
+
+def test_docxodus_explicit_wmlcomparer_matches_default(original_docx, modified_docx):
+    engine = DocxodusEngine()
+    _, default_stdout, _ = engine.run_redline("TestAuthor", original_docx, modified_docx)
+    _, explicit_stdout, _ = engine.run_redline(
+        "TestAuthor", original_docx, modified_docx, engine="wmlcomparer",
+    )
+    assert "9 revision(s) found" in default_stdout
+    assert "9 revision(s) found" in explicit_stdout
+
+
+def test_docxdiff_output_is_a_valid_docx_with_tracked_changes(original_docx, modified_docx):
+    import io
+    import zipfile
+
+    engine = DocxodusEngine()
+    redline_output, _, _ = engine.run_redline(
+        "TestAuthor", original_docx, modified_docx, engine="docxdiff",
+    )
+    with zipfile.ZipFile(io.BytesIO(redline_output)) as archive:
+        assert archive.testzip() is None
+        document_xml = archive.read("word/document.xml").decode("utf-8")
+
+    assert "<w:ins " in document_xml
+    assert "<w:del " in document_xml
