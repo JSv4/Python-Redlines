@@ -139,9 +139,14 @@ class BaseEngine(object):
         (as ``str`` or ``pathlib.Path``). Returns the redline output as bytes.
 
         Additional keyword arguments are passed to _build_command() for engine-specific options.
-        DocxodusEngine supports: detail_threshold, case_insensitive, detect_moves,
+        DocxodusEngine supports: engine, detail_threshold, case_insensitive, detect_moves,
         simplify_move_markup, move_similarity_threshold, move_minimum_word_count,
         detect_format_changes, conflate_spaces, date_time.
+
+        DocxodusEngine's engine kwarg selects the comparison algorithm: 'wmlcomparer'
+        (the default) or 'docxdiff'. The docxdiff engine ignores detail_threshold,
+        simplify_move_markup, and detect_format_changes, so passing them alongside
+        engine='docxdiff' raises ValueError rather than silently changing nothing.
         """
         temp_files = []
         try:
@@ -194,6 +199,13 @@ class DocxodusEngine(BaseEngine):
     BINARY_BASE_NAME = 'redline'
     EXTRA_NAME = 'docxodus'
 
+    # Comparison engines accepted by the redline CLI's --engine flag.
+    ENGINES = ('wmlcomparer', 'docxdiff')
+
+    # DocxCompare.ToDocxDiffSettings drops these on the docxdiff branch, and the CLI
+    # accepts them there without complaint, so reject them before we shell out.
+    _WMLCOMPARER_ONLY = ('detail_threshold', 'simplify_move_markup', 'detect_format_changes')
+
     # Boolean flags (default False — presence enables)
     _BOOL_FLAGS = [
         ('case_insensitive', '--case-insensitive'),
@@ -215,8 +227,33 @@ class DocxodusEngine(BaseEngine):
         ('date_time', '--date-time'),
     ]
 
-    @staticmethod
-    def _validate_kwargs(kwargs):
+    @classmethod
+    def _normalize_engine(cls, kwargs):
+        """The chosen engine, lowercased and stripped, or None if the caller didn't pick one."""
+        if 'engine' not in kwargs:
+            return None
+
+        engine = kwargs['engine']
+        if not isinstance(engine, str):
+            raise ValueError(f"engine must be a string, got {engine!r}")
+
+        normalized = engine.strip().lower()
+        if normalized not in cls.ENGINES:
+            raise ValueError(
+                f"engine must be one of {', '.join(cls.ENGINES)}, got {engine!r}"
+            )
+        return normalized
+
+    @classmethod
+    def _validate_kwargs(cls, kwargs):
+        if cls._normalize_engine(kwargs) == 'docxdiff':
+            for name in cls._WMLCOMPARER_ONLY:
+                if name in kwargs:
+                    raise ValueError(
+                        f"{name} is not supported by the 'docxdiff' engine "
+                        f"(WmlComparer-only). Remove it or use engine='wmlcomparer'."
+                    )
+
         if 'detail_threshold' in kwargs:
             val = kwargs['detail_threshold']
             if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
@@ -234,9 +271,13 @@ class DocxodusEngine(BaseEngine):
 
     def _build_command(self, author_tag, original_path, modified_path, target_path, **kwargs):
         self._validate_kwargs(kwargs)
+        engine = self._normalize_engine(kwargs)
 
         cmd = [self.extracted_binaries_path, original_path, modified_path, target_path,
                f'--author={author_tag}']
+
+        if engine is not None:
+            cmd.append(f'--engine={engine}')
 
         for kwarg, flag in self._BOOL_FLAGS:
             if kwargs.get(kwarg):

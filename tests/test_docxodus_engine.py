@@ -188,3 +188,97 @@ def test_build_command_negatable_true_not_added():
     )
     assert "--no-detect-format-changes" not in cmd
     assert "--no-conflate-spaces" not in cmd
+
+
+# --- Engine selection (Docxodus v7.0.0 --engine flag) ---
+
+def test_build_command_engine_omitted_by_default():
+    """No engine= kwarg means no --engine flag: the argv stays as it was pre-v7."""
+    engine = DocxodusEngine()
+    cmd = engine._build_command("Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx")
+    assert not any(arg.startswith("--engine") for arg in cmd)
+
+
+def test_build_command_engine_docxdiff():
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="docxdiff",
+    )
+    assert "--engine=docxdiff" in cmd
+
+
+def test_build_command_engine_explicit_wmlcomparer():
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="wmlcomparer",
+    )
+    assert "--engine=wmlcomparer" in cmd
+
+
+def test_build_command_engine_is_normalized():
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="  DocxDiff  ",
+    )
+    assert "--engine=docxdiff" in cmd
+
+
+def test_build_command_unknown_engine():
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="engine must be one of"):
+        engine._build_command("Author", "orig", "mod", "out", engine="bogus")
+
+
+def test_build_command_non_string_engine():
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="engine must be a string"):
+        engine._build_command("Author", "orig", "mod", "out", engine=1)
+
+
+@pytest.mark.parametrize("kwarg, value", [
+    ("detail_threshold", 0.5),
+    ("detail_threshold", 0.0),
+    ("simplify_move_markup", True),
+    ("simplify_move_markup", False),
+    ("detect_format_changes", True),
+    ("detect_format_changes", False),
+])
+def test_docxdiff_rejects_wmlcomparer_only_kwargs(kwarg, value):
+    """docxdiff silently ignores these in C#; reject on key presence, whatever the value."""
+    engine = DocxodusEngine()
+    expected = f"{kwarg} is not supported by the 'docxdiff' engine"
+    with pytest.raises(ValueError, match=expected):
+        engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", **{kwarg: value})
+
+
+def test_wmlcomparer_still_allows_its_own_kwargs():
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "orig", "mod", "out",
+        engine="wmlcomparer", detail_threshold=0.5, simplify_move_markup=True,
+    )
+    assert "--engine=wmlcomparer" in cmd
+    assert "--detail-threshold=0.5" in cmd
+    assert "--simplify-move-markup" in cmd
+
+
+def test_docxdiff_allows_the_kwargs_it_honours():
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "orig", "mod", "out",
+        engine="docxdiff", detect_moves=True, case_insensitive=True,
+        conflate_spaces=False, move_similarity_threshold=0.7, move_minimum_word_count=2,
+    )
+    assert "--engine=docxdiff" in cmd
+    assert "--detect-moves" in cmd
+    assert "--case-insensitive" in cmd
+    assert "--no-conflate-spaces" in cmd
+    assert "--move-similarity-threshold=0.7" in cmd
+    assert "--move-minimum-word-count=2" in cmd
+
+
+def test_docxdiff_engine_check_precedes_range_check():
+    """engine='docxdiff' + an out-of-range detail_threshold reports the engine problem."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="not supported by the 'docxdiff' engine"):
+        engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", detail_threshold=1.5)
