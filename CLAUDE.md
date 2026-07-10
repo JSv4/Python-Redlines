@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Python-Redlines generates `.docx` redline/tracked-changes documents by comparing two Word files. A pure-Python wrapper drives compiled C# (.NET 8) engine binaries; the Python layer handles platform detection, binary extraction, temp file management, and subprocess execution.
+Python-Redlines generates `.docx` redline/tracked-changes documents by comparing two Word files. A pure-Python wrapper drives compiled C# (.NET 10) engine binaries; the Python layer handles platform detection, binary extraction, temp file management, and subprocess execution.
 
 Two comparison engines are available:
 - **XmlPowerToolsEngine** — wraps Open-XML-PowerTools WmlComparer (original engine)
-- **DocxodusEngine** — wraps Docxodus, a modernized .NET 8.0 fork with better move detection
+- **DocxodusEngine** — wraps Docxodus, a modernized .NET 10.0 fork with better move detection.
+  Takes `engine="wmlcomparer"` (default) or `engine="docxdiff"` to pick the comparison algorithm.
 
 ## Monorepo structure — three published packages
 
@@ -34,7 +35,7 @@ shared pytest/coverage config.
 # Initialize the Docxodus submodule (required before building its engine)
 git submodule update --init --recursive
 
-# Build engine binaries for one or more platforms (requires .NET 8.0 SDK).
+# Build engine binaries for one or more platforms (requires .NET 10.0 SDK).
 # RIDs: linux-x64 linux-arm64 win-x64 win-arm64 osx-x64 osx-arm64
 python build_differ.py linux-x64
 python build_differ.py --all
@@ -63,9 +64,10 @@ python -m build --wheel packages/docxodus      # needs an archive in _binaries/ 
      package is missing, with the `pip install` command to fix it.
 
    Both engines expose `run_redline(author_tag, original, modified, **kwargs)`.
-   `DocxodusEngine` overrides `_build_command()` to translate kwargs (e.g. `detect_moves`,
-   `detail_threshold`) into CLI flags. `XmlPowerToolsEngine` uses the legacy
-   4-positional-arg format and ignores kwargs.
+   `DocxodusEngine` overrides `_build_command()` to translate kwargs (e.g. `engine`,
+   `detect_moves`, `detail_threshold`) into CLI flags, and raises `ValueError` when a
+   WmlComparer-only kwarg is combined with `engine="docxdiff"`. `XmlPowerToolsEngine` uses
+   the legacy 4-positional-arg format and ignores kwargs.
 
 2. **Binary packages** ship one platform archive under
    `src/<pkg>/_binaries/<rid>.tar.gz` (or `.zip` for Windows). The archive is
@@ -78,6 +80,10 @@ python -m build --wheel packages/docxodus      # needs an archive in _binaries/ 
 
    `build_differ.py` compiles an engine for a given RID with `dotnet publish` and
    writes a single flat archive into the corresponding binary package's `_binaries/`.
+
+   The two engines target different frameworks — `csproj` is `net8.0`, `docxodus/tools/redline`
+   is `net10.0` — so `build_differ.py`'s `ENGINES` list carries a per-engine `tfm`. The .NET 10
+   SDK builds both; `global.json` pins it.
 
 ## Build & release flow
 
@@ -104,4 +110,5 @@ integration test validates exactly 9 revisions on the fixture documents.
 ## Stdout Format Differences
 
 - **XmlPowerToolsEngine**: `"Revisions found: 9"`
-- **DocxodusEngine**: `"Redline complete: 9 revision(s) found"`
+- **DocxodusEngine**, default / `engine="wmlcomparer"`: `"Redline complete: 9 revision(s) found"`
+- **DocxodusEngine**, `engine="docxdiff"`: `"Redline complete: 11 revision(s) found"`

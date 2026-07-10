@@ -12,7 +12,7 @@ on it freely: two documents in, one redline out.
 ## Quick Start
 
 The **default engine is [Docxodus](https://github.com/JSv4/Docxodus)** — a modernized,
-actively-maintained .NET 8 comparison engine (detailed below). Install it and you're
+actively-maintained .NET 10 comparison engine (detailed below). Install it and you're
 running; the engine binary is prebuilt and embedded in the wheel, so there is **no .NET
 SDK to install and nothing to compile**:
 
@@ -45,7 +45,7 @@ recommended choice; `XmlPowerToolsEngine` remains available as a legacy option.
 
 ### `DocxodusEngine` — Default (Recommended)
 
-**[Docxodus](https://github.com/JSv4/Docxodus)** is a modernized .NET 8.0 fork of Open-XML-PowerTools with
+**[Docxodus](https://github.com/JSv4/Docxodus)** is a modernized .NET 10.0 fork of Open-XML-PowerTools with
 significant improvements:
 
 - **Move detection** — identifies content that was moved rather than deleted and re-inserted
@@ -125,6 +125,7 @@ redline_bytes, stdout, stderr = engine.run_redline(
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
+| `engine` | str | `"wmlcomparer"` | Comparison algorithm: `"wmlcomparer"` or `"docxdiff"` |
 | `detail_threshold` | float | 0.0 | Comparison granularity (0.0–1.0, lower = more detailed) |
 | `case_insensitive` | bool | False | Ignore case differences |
 | `detect_moves` | bool | False | Enable move detection |
@@ -141,6 +142,22 @@ redline_bytes, stdout, stderr = engine.run_redline(
 
 > **Note:** These settings are only available on `DocxodusEngine`. `XmlPowerToolsEngine` ignores
 > extra keyword arguments.
+
+### Choosing an engine
+
+`DocxodusEngine` wraps two comparison algorithms in one binary. `wmlcomparer` is the default
+and is the lineage inherited from Open-XML-PowerTools. `docxdiff` is Docxodus's newer
+structure-aware IR engine, which produces finer-grained markup — on the same pair of documents
+it reports 11 revisions where `wmlcomparer` reports 9.
+
+```python
+engine.run_redline("Reviewer", original, modified, engine="docxdiff")
+```
+
+`docxdiff` does not implement `detail_threshold`, `simplify_move_markup`, or
+`detect_format_changes`. Passing any of them alongside `engine="docxdiff"` raises `ValueError`
+rather than silently ignoring them. It does honour `detect_moves`, `case_insensitive`,
+`conflate_spaces`, `move_similarity_threshold`, `move_minimum_word_count`, and `date_time`.
 
 ## Architecture Overview
 
@@ -184,19 +201,25 @@ extracts the platform archive once into the user cache directory, and runs it.
 
 ### Stdout Differences
 
-The two engines produce slightly different stdout messages:
+The engines produce slightly different stdout messages:
 
 | Engine | Example stdout |
 |---|---|
 | `XmlPowerToolsEngine` | `Revisions found: 9` |
-| `DocxodusEngine` | `Redline complete: 9 revision(s) found` |
+| `DocxodusEngine` (default / `engine="wmlcomparer"`) | `Redline complete: 9 revision(s) found` |
+| `DocxodusEngine` (`engine="docxdiff"`) | `Redline complete: 11 revision(s) found` |
+
+The revision counts differ between the two Docxodus engines because the algorithms differ,
+not because either is wrong.
 
 ## Development
 
 ### Prerequisites
 
 - Python 3.9+
-- .NET 8.0 SDK (only for building the engine binaries locally)
+- .NET 10.0 SDK (only for building the engine binaries locally). Install with
+  `apt install dotnet-sdk-10.0`, or `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0`.
+  A .NET 8 SDK can no longer build the Docxodus engine, which targets `net10.0`.
 
 ### Setup
 
