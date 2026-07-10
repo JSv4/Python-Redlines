@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from python_redlines.engines import DocxodusEngine
@@ -16,6 +18,13 @@ def original_docx():
 @pytest.fixture
 def modified_docx():
     return load_docx_bytes('tests/fixtures/modified.docx')
+
+
+def revision_count(stdout):
+    """The integer revision count from a Docxodus 'Redline complete: N revision(s) found' line."""
+    match = re.search(r"Redline complete: (\d+) revision\(s\) found", stdout)
+    assert match, f"no revision count in stdout: {stdout!r}"
+    return int(match.group(1))
 
 
 def test_run_docxodus_with_real_files(original_docx, modified_docx):
@@ -314,8 +323,10 @@ def test_docxodus_explicit_wmlcomparer_matches_default(original_docx, modified_d
     _, explicit_stdout, _ = engine.run_redline(
         "TestAuthor", original_docx, modified_docx, engine="wmlcomparer",
     )
-    assert "9 revision(s) found" in default_stdout
-    assert "9 revision(s) found" in explicit_stdout
+    default_count = revision_count(default_stdout)
+    explicit_count = revision_count(explicit_stdout)
+    assert explicit_count == default_count
+    assert default_count == 9
 
 
 def test_docxdiff_output_is_a_valid_docx_with_tracked_changes(original_docx, modified_docx):

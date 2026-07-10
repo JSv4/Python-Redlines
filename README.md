@@ -136,7 +136,7 @@ redline_bytes, stdout, stderr = engine.run_redline(
 | `conflate_spaces` | bool | True | Treat breaking/non-breaking spaces the same |
 | `date_time` | str | now | Custom ISO 8601 timestamp for revisions |
 
-> **Warning:** Move detection can cause Word to display "unreadable content" warnings due to a known
+> **Warning:** (WmlComparer only) Move detection can cause Word to display "unreadable content" warnings due to a known
 > ID collision bug. When using `detect_moves=True`, always set `simplify_move_markup=True` as well.
 > This converts move markup to regular del/ins (loses green move styling but ensures Word compatibility).
 
@@ -158,6 +158,12 @@ engine.run_redline("Reviewer", original, modified, engine="docxdiff")
 `detect_format_changes`. Passing any of them alongside `engine="docxdiff"` raises `ValueError`
 rather than silently ignoring them. It does honour `detect_moves`, `case_insensitive`,
 `conflate_spaces`, `move_similarity_threshold`, `move_minimum_word_count`, and `date_time`.
+
+Move markup differs between the two. `docxdiff` renders moves natively and rejects
+`simplify_move_markup`, so the Word-compatibility mitigation described in the warning above is
+unavailable there; whether Word's ID-collision warning affects DocxDiff's native move markup is
+untested. If you need moves lowered to plain del/ins for maximum Word compatibility, use
+`engine="wmlcomparer"` with `simplify_move_markup=True`.
 
 ## Architecture Overview
 
