@@ -28,6 +28,9 @@ redline_bytes, stdout, stderr = engine.run_redline(
 )
 ```
 
+`DocxodusEngine` accepts `engine="wmlcomparer"` (default) or `engine="docxdiff"` to select the
+comparison algorithm. See the [project README](https://github.com/JSv4/Python-Redlines#choosing-an-engine).
+
 If an engine's companion package is not installed, instantiating the engine
 raises `EngineNotInstalledError` with the `pip install` command to fix it.
 

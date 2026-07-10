@@ -25,6 +25,7 @@ ENGINES = [
         "name": "ooxmlpowertools",
         "csproj": os.path.join("csproj"),
         "csproj_file": os.path.join("csproj", "redlines.csproj"),
+        "tfm": "net8.0",
         "binaries_dir": os.path.join(
             "packages", "ooxmlpowertools", "src",
             "python_redlines_ooxmlpowertools", "_binaries",
@@ -34,6 +35,7 @@ ENGINES = [
         "name": "docxodus",
         "csproj": os.path.join("docxodus", "tools", "redline"),
         "csproj_file": os.path.join("docxodus", "tools", "redline", "redline.csproj"),
+        "tfm": "net10.0",
         "binaries_dir": os.path.join(
             "packages", "docxodus", "src",
             "python_redlines_docxodus", "_binaries",
@@ -88,7 +90,7 @@ def build_engine_for_rid(engine, rid):
     print(f"[{engine['name']}] Building {rid} ...")
     run_command(f"dotnet publish {csproj} -c Release -r {rid} --self-contained")
 
-    publish_dir = os.path.join(csproj, "bin", "Release", "net8.0", rid, "publish")
+    publish_dir = os.path.join(csproj, "bin", "Release", engine["tfm"], rid, "publish")
     if not os.path.isdir(publish_dir):
         raise RuntimeError(f"Expected publish output not found: {publish_dir}")
 
