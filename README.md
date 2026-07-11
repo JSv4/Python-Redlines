@@ -35,15 +35,54 @@ with open("redline.docx", "wb") as f:
     f.write(redline_bytes)
 ```
 
-That's the whole thing. The rest of this README covers the second (legacy) engine,
-comparison settings, and how the packages are built and distributed.
+That's the whole thing. The rest of this README covers the other engines, comparison
+settings, and how the packages are built and distributed.
+
+### 🆕 New in 0.3.0: `docxdiff`, an optional next-generation engine
+
+Docxodus now ships a **second comparison algorithm** alongside the classic one. `docxdiff` is a
+structure-aware engine that models the document as a tree rather than a stream of runs, so it
+produces finer-grained redlines and tracks structural edits — table cell and row properties, section
+properties, header and footer content — that the classic algorithm reports coarsely or not at all.
+
+**It is off by default, so nothing about your existing calls changes engines.** Opting in is one
+keyword argument:
+
+```python
+engine.run_redline("Reviewer", original, modified, engine="docxdiff")
+```
+
+**Please try it and tell us what you find.** It is new, and the two algorithms legitimately disagree
+about how to describe the same edit — on this project's own test fixtures `docxdiff` reports 11
+revisions where the classic engine reports 9. Neither is wrong; they segment the same changes
+differently. Before adopting it for production redlines, compare its output against your own
+documents. See [Choosing an engine](#choosing-an-engine) for the trade-offs and the settings it does
+not support.
+
+> **Note:** the default algorithm is unchanged, but the Docxodus binary behind it moved from v5.4.2
+> to v7.0.0 in this release and carries upstream `WmlComparer` fixes of its own (header references,
+> table anchoring). Redline output on the default path can therefore differ from 0.2.1 independently
+> of this new flag. Diff a representative document if byte-level stability matters to you.
 
 ## Comparison Engines
 
-Python-Redlines provides **two comparison engines**. `DocxodusEngine` is the default and
-recommended choice; `XmlPowerToolsEngine` remains available as a legacy option.
+Python-Redlines gives you **three ways to compare**, across two engine classes. `DocxodusEngine`
+carries two interchangeable algorithms in one binary; `XmlPowerToolsEngine` is a separate, legacy
+package.
 
-### `DocxodusEngine` — Default (Recommended)
+| # | Choice | How to select it | Algorithm | Status |
+|---|---|---|---|---|
+| 1 | **Docxodus · `wmlcomparer`** | `DocxodusEngine()` | Modernized `WmlComparer` | ✅ **Default.** Stable, recommended |
+| 2 | **Docxodus · `docxdiff`** | `DocxodusEngine()` + `engine="docxdiff"` | Structure-aware IR diff | 🆕 New in 0.3.0. Opt-in, seeking feedback |
+| 3 | **Open-XML-PowerTools** | `XmlPowerToolsEngine()` | Original `WmlComparer` | 🗄️ Legacy. Upstream archived |
+
+Choices 1 and 3 are cousins: both descend from Microsoft's `WmlComparer`, which is why choice 1 is
+named `wmlcomparer`. Choice 1 is Docxodus's actively-maintained fork of it; choice 3 is the original,
+unmaintained code. Choice 2 shares nothing with either but the output format — it is a new engine.
+
+**If you are unsure, use choice 1.** It is the default and requires no arguments.
+
+### 1. `DocxodusEngine` with `wmlcomparer` — the default
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is a modernized .NET 10.0 fork of Open-XML-PowerTools with
 significant improvements:
@@ -61,7 +100,25 @@ engine = DocxodusEngine()
 redline_bytes, stdout, stderr = engine.run_redline("AuthorName", original_bytes, modified_bytes)
 ```
 
-### `XmlPowerToolsEngine` — Legacy
+### 2. `DocxodusEngine` with `docxdiff` — new, opt-in
+
+The same class and the same binary, selected per call. `docxdiff` models the document as an
+intermediate representation, which lets it attribute a change to the exact paragraph, cell, row, or
+section it touched.
+
+```python
+from python_redlines import DocxodusEngine
+
+engine = DocxodusEngine()
+redline_bytes, stdout, stderr = engine.run_redline(
+    "AuthorName", original_bytes, modified_bytes, engine="docxdiff",
+)
+```
+
+Three settings do not exist for this algorithm and raise `ValueError` rather than being silently
+ignored — see [Choosing an engine](#choosing-an-engine).
+
+### 3. `XmlPowerToolsEngine` — legacy
 
 Wraps the original [Open-XML-PowerTools](https://github.com/OpenXmlDev/Open-Xml-PowerTools) `WmlComparer`. This
 engine remains available for backward compatibility and for users who prefer the original comparison behavior.
@@ -76,8 +133,9 @@ redline_bytes, stdout, stderr = engine.run_redline("AuthorName", original_bytes,
 > **Note:** Open-XML-PowerTools was archived by Microsoft and is no longer maintained. It uses an older
 > version of the Open XML SDK. While it works for many purposes, Docxodus is the recommended engine going forward.
 
-Both engines share the same API — the only difference is the class you instantiate and the stdout format
-(see [Stdout Differences](#stdout-differences) below).
+All three share the same call signature — `run_redline(author, original, modified)` returning
+`(bytes, stdout, stderr)`. They differ in the class you instantiate, which keyword arguments they
+accept, and their stdout format (see [Stdout Differences](#stdout-differences) below).
 
 ## Getting Started
 
@@ -93,7 +151,7 @@ as extras:
 ```commandline
 pip install python-redlines[docxodus]          # Docxodus engine
 pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine
-pip install python-redlines[all]                # both engines
+pip install python-redlines[all]                # both engine packages
 ```
 
 Prebuilt wheels are available for Linux, macOS, and Windows (x64 and arm64); `pip`
@@ -108,7 +166,9 @@ See the [Quick Start](#quick-start) above for a minimal example, or the
 
 ## Comparison Settings (DocxodusEngine only)
 
-`DocxodusEngine` supports fine-grained control over the comparison via keyword arguments to `run_redline()`:
+`DocxodusEngine` supports fine-grained control over the comparison via keyword arguments to
+`run_redline()`. Which arguments are available depends on the algorithm you select — the second
+table below is the authoritative matrix. `XmlPowerToolsEngine` accepts none of them.
 
 ```python
 from python_redlines import DocxodusEngine
@@ -123,51 +183,86 @@ redline_bytes, stdout, stderr = engine.run_redline(
 )
 ```
 
+### What each setting does
+
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `engine` | str | `"wmlcomparer"` | Comparison algorithm: `"wmlcomparer"` or `"docxdiff"` |
-| `detail_threshold` | float | 0.0 | Comparison granularity (0.0–1.0, lower = more detailed) |
-| `case_insensitive` | bool | False | Ignore case differences |
-| `detect_moves` | bool | False | Enable move detection |
-| `simplify_move_markup` | bool | False | Convert moves to del/ins for Word compatibility |
-| `move_similarity_threshold` | float | 0.8 | Jaccard threshold for move matching (0.0–1.0) |
-| `move_minimum_word_count` | int | 3 | Minimum words for move detection |
-| `detect_format_changes` | bool | True | Detect formatting-only changes |
-| `conflate_spaces` | bool | True | Treat breaking/non-breaking spaces the same |
+| `detail_threshold` | float | `0.0` | Comparison granularity (0.0–1.0, lower = more detailed) |
+| `case_insensitive` | bool | `False` | Ignore case differences |
+| `detect_moves` | bool | `False` | Enable move detection |
+| `simplify_move_markup` | bool | `False` | Convert moves to del/ins for Word compatibility |
+| `move_similarity_threshold` | float | `0.8` | Jaccard threshold for move matching (0.0–1.0) |
+| `move_minimum_word_count` | int | `3` | Minimum words for move detection |
+| `detect_format_changes` | bool | `True` | Detect formatting-only changes |
+| `conflate_spaces` | bool | `True` | Treat breaking/non-breaking spaces the same |
 | `date_time` | str | now | Custom ISO 8601 timestamp for revisions |
 
-> **Warning:** (WmlComparer only) Move detection can cause Word to display "unreadable content" warnings due to a known
+### Which engine accepts which setting
+
+| Setting | Docxodus · `wmlcomparer` | Docxodus · `docxdiff` | `XmlPowerToolsEngine` |
+|---|:---:|:---:|:---:|
+| `engine` | ✅ | ✅ | — ignored |
+| `detail_threshold` | ✅ | ❌ `ValueError` | — ignored |
+| `case_insensitive` | ✅ | ✅ | — ignored |
+| `detect_moves` | ✅ | ✅ | — ignored |
+| `simplify_move_markup` | ✅ | ❌ `ValueError` | — ignored |
+| `move_similarity_threshold` | ✅ | ✅ | — ignored |
+| `move_minimum_word_count` | ✅ | ✅ | — ignored |
+| `detect_format_changes` | ✅ | ❌ `ValueError` | — ignored |
+| `conflate_spaces` | ✅ | ✅ | — ignored |
+| `date_time` | ✅ | ✅ | — ignored |
+
+**❌ `ValueError`** — `docxdiff` has no equivalent of these three settings. The underlying CLI accepts
+and silently discards them, so Python rejects them up front rather than let you believe a setting took
+effect when it did not. The check is on the *keyword being present*, whatever its value: pass
+`detect_format_changes=True` (its default) with `engine="docxdiff"` and you still get a `ValueError`.
+Drop the keyword, or use `engine="wmlcomparer"`.
+
+**— ignored** — `XmlPowerToolsEngine` silently discards every keyword argument, including `engine`.
+This is long-standing behavior, not new. Passing `engine="docxdiff"` to it does nothing.
+
+> **Warning:** (`wmlcomparer` only) Move detection can cause Word to display "unreadable content" warnings due to a known
 > ID collision bug. When using `detect_moves=True`, always set `simplify_move_markup=True` as well.
 > This converts move markup to regular del/ins (loses green move styling but ensures Word compatibility).
 
-> **Note:** These settings are only available on `DocxodusEngine`. `XmlPowerToolsEngine` ignores
-> extra keyword arguments.
-
 ### Choosing an engine
 
-`DocxodusEngine` wraps two comparison algorithms in one binary. `wmlcomparer` is the default
-and is the lineage inherited from Open-XML-PowerTools. `docxdiff` is Docxodus's newer
-structure-aware IR engine, which produces finer-grained markup — on the same pair of documents
-it reports 11 revisions where `wmlcomparer` reports 9.
+`DocxodusEngine` wraps two comparison algorithms in one binary, selected per call:
 
 ```python
-engine.run_redline("Reviewer", original, modified, engine="docxdiff")
+engine.run_redline("Reviewer", original, modified)                     # wmlcomparer (default)
+engine.run_redline("Reviewer", original, modified, engine="docxdiff")  # opt in
 ```
 
-`docxdiff` does not implement `detail_threshold`, `simplify_move_markup`, or
-`detect_format_changes`. Passing any of them alongside `engine="docxdiff"` raises `ValueError`
-rather than silently ignoring them. It does honour `detect_moves`, `case_insensitive`,
-`conflate_spaces`, `move_similarity_threshold`, `move_minimum_word_count`, and `date_time`.
+| | Reach for `wmlcomparer` | Reach for `docxdiff` |
+|---|---|---|
+| **When** | You want the long-established algorithm | You want finer-grained, structure-aware redlines |
+| **Maturity** | Years of production use | New in 0.3.0 — evaluate on your documents first |
+| **Granularity knob** | `detail_threshold` tunes it | Not applicable; granularity is structural |
+| **Moves** | Can be lowered to del/ins via `simplify_move_markup` | Rendered natively; cannot be lowered |
+| **Structural edits** | Reported coarsely | Attributed to the paragraph, cell, row, or section |
 
-Move markup differs between the two. `docxdiff` renders moves natively and rejects
-`simplify_move_markup`, so the Word-compatibility mitigation described in the warning above is
-unavailable there; whether Word's ID-collision warning affects DocxDiff's native move markup is
-untested. If you need moves lowered to plain del/ins for maximum Word compatibility, use
-`engine="wmlcomparer"` with `simplify_move_markup=True`.
+**The two disagree about revision counts, and that is expected.** On this project's own fixtures,
+`wmlcomparer` reports 9 revisions and `docxdiff` reports 11 for the same pair of documents. They
+segment the same edits differently — a single reworded sentence may be one revision to one engine and
+two to the other. Do not treat a changed count as a defect; do compare the rendered redline against
+your own documents before switching.
+
+**Move markup differs.** `docxdiff` renders moves natively and rejects `simplify_move_markup`, so the
+Word-compatibility mitigation in the warning above is unavailable there. Whether Word's ID-collision
+warning affects `docxdiff`'s native move markup is untested. If you need moves lowered to plain
+del/ins for maximum Word compatibility, use `engine="wmlcomparer"` with `simplify_move_markup=True`.
+
+**Feedback wanted.** `docxdiff` stays off by default precisely so that adopting 0.3.0 cannot change
+your output. If you try it, please
+[open an issue](https://github.com/JSv4/Python-Redlines/issues) with what you found — especially
+documents where its redline reads worse than `wmlcomparer`'s.
 
 ## Architecture Overview
 
-Both engines follow the same pattern: a Python wrapper class invokes a self-contained C# binary via subprocess.
+Both engine classes follow the same pattern: a Python wrapper class invokes a self-contained C# binary
+via subprocess. `DocxodusEngine`'s two algorithms are one binary selected by a CLI flag, not two binaries.
 
 The repository is a **monorepo of three separately-published packages**:
 
