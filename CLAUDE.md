@@ -29,6 +29,20 @@ prebuilt wheel, so end users never compile anything.
 The repo root is **not** an installable project — its `pyproject.toml` holds only
 shared pytest/coverage config.
 
+## GitHub Action
+
+The repo root also publishes a composite GitHub Action (`uses: JSv4/Python-Redlines@<ref>`),
+issue #12. `action.yml` wires inputs/artifact-upload; the logic lives in
+`action/redline_changed.py` (stdlib-only driver): auto-detects `.docx` files changed
+between two commits (PR base/head, push before/after, or explicit `base-ref`/`head-ref`)
+or takes an explicit `original`/`modified` pair, runs an engine via pip-installed
+python-redlines (PyPI wheels, not the working tree), and optionally renders HTML previews
+by invoking the Docxodus `Docx2Html` dotnet tool with `--track-changes` (requires
+Docxodus ≥ 7.1.0; `html-preview: auto` skips gracefully below that). Script unit +
+integration tests: `tests/test_action_script.py`; action-level self-test:
+`.github/workflows/redline-action-test.yml` (runs the action from the checkout in both
+modes and asserts on outputs).
+
 ## Commands
 
 ```bash

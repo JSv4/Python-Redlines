@@ -1,0 +1,197 @@
+name: 'DOCX Redlines'
+description: >-
+  Generate Word tracked-changes (redline) documents for .docx files changed in a
+  pull request or push — or for an explicit pair of files — using python-redlines.
+  Optionally renders browser-viewable HTML previews of each redline via Docxodus.
+author: 'JSv4'
+branding:
+  icon: 'file-text'
+  color: 'red'
+
+inputs:
+  original:
+    description: >-
+      Path to the original .docx for explicit-pair mode. Must be set together with
+      'modified'. Leave both empty to auto-detect the .docx files changed between
+      two commits instead.
+    required: false
+    default: ''
+  modified:
+    description: 'Path to the modified .docx for explicit-pair mode.'
+    required: false
+    default: ''
+  files:
+    description: >-
+      Newline-separated glob pattern(s) selecting which changed .docx files to
+      redline in auto-detect mode (git pathspec globs, case-insensitive).
+    required: false
+    default: '**/*.docx'
+  base-ref:
+    description: >-
+      Base commit/ref to compare from in auto-detect mode. Must be set together with
+      'head-ref'. Defaults to the PR base (merge-base with the head when computable)
+      on pull_request events, the pre-push commit on push events, or HEAD~1.
+    required: false
+    default: ''
+  head-ref:
+    description: 'Head commit/ref to compare to in auto-detect mode.'
+    required: false
+    default: ''
+  author:
+    description: 'Author name recorded on the generated tracked changes.'
+    required: false
+    default: 'python-redlines'
+  engine:
+    description: "Redline engine: 'docxodus' or 'xmlpowertools'."
+    required: false
+    default: 'docxodus'
+  comparison:
+    description: >-
+      Comparison algorithm for the docxodus engine: 'wmlcomparer' (default) or
+      'docxdiff'.
+    required: false
+    default: ''
+  detect-moves:
+    description: "Enable move detection (docxodus engine only): 'true' or 'false'."
+    required: false
+    default: 'false'
+  output-dir:
+    description: 'Directory (relative to the workspace) where redlines are written.'
+    required: false
+    default: 'redlines'
+  html-preview:
+    description: >-
+      Render an HTML preview of each redline with the Docx2Html dotnet tool:
+      'auto' (render when the tool supports it, otherwise warn and skip),
+      'true' (require it, fail otherwise), or 'false' (skip; no .NET needed).
+    required: false
+    default: 'auto'
+  summary:
+    description: "Write a job-summary table of the generated redlines: 'true' or 'false'."
+    required: false
+    default: 'true'
+  upload-artifact:
+    description: "Upload the output directory as a workflow artifact: 'true' or 'false'."
+    required: false
+    default: 'true'
+  artifact-name:
+    description: 'Name of the uploaded artifact.'
+    required: false
+    default: 'docx-redlines'
+  package-version:
+    description: >-
+      pip version specifier for python-redlines, e.g. '==0.3.0'. Empty installs the
+      latest release.
+    required: false
+    default: ''
+  docx2html-version:
+    description: 'NuGet version of the Docx2Html dotnet tool. Empty installs the latest.'
+    required: false
+    default: ''
+
+outputs:
+  count:
+    description: 'Number of redline documents generated.'
+    value: ${{ steps.redline.outputs.count }}
+  any-changes:
+    description: >-
+      'true' when at least one .docx change matched (including added/deleted files
+      that cannot be redlined), otherwise 'false'.
+    value: ${{ steps.redline.outputs.any-changes }}
+  redlines:
+    description: >-
+      JSON array describing each detected change:
+      [{"path", "previous_path", "status", "revisions", "redline", "html"}, ...].
+    value: ${{ steps.redline.outputs.redlines }}
+  artifact-url:
+    description: 'URL of the uploaded artifact (empty when nothing was uploaded).'
+    value: ${{ steps.upload.outputs.artifact-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      id: python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        update-environment: false
+
+    - name: Install python-redlines
+      shell: bash
+      env:
+        INPUT_ENGINE: ${{ inputs.engine }}
+        INPUT_PACKAGE_VERSION: ${{ inputs.package-version }}
+      run: |
+        case "${INPUT_ENGINE}" in
+          docxodus)      EXTRA="docxodus" ;;
+          xmlpowertools) EXTRA="ooxmlpowertools" ;;
+          *) echo "::error::Unknown engine '${INPUT_ENGINE}' (expected 'docxodus' or 'xmlpowertools')"; exit 1 ;;
+        esac
+        "${{ steps.python.outputs.python-path }}" -m pip install --quiet "python-redlines[${EXTRA}]${INPUT_PACKAGE_VERSION}"
+
+    - name: Set up .NET for HTML previews
+      if: ${{ inputs.html-preview != 'false' }}
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Install the Docx2Html preview tool
+      if: ${{ inputs.html-preview != 'false' }}
+      shell: bash
+      env:
+        INPUT_HTML_PREVIEW: ${{ inputs.html-preview }}
+        INPUT_DOCX2HTML_VERSION: ${{ inputs.docx2html-version }}
+      run: |
+        echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+        VERSION_ARGS=()
+        if [ -n "${INPUT_DOCX2HTML_VERSION}" ]; then
+          VERSION_ARGS=(--version "${INPUT_DOCX2HTML_VERSION}")
+        fi
+        if [ "${INPUT_HTML_PREVIEW}" = "true" ]; then
+          dotnet tool update --global Docx2Html "${VERSION_ARGS[@]}"
+        else
+          dotnet tool update --global Docx2Html "${VERSION_ARGS[@]}" \
+            || echo "::warning::Could not install the Docx2Html dotnet tool; HTML previews will be skipped."
+        fi
+
+    - name: Generate redlines
+      id: redline
+      shell: bash
+      env:
+        INPUT_ORIGINAL: ${{ inputs.original }}
+        INPUT_MODIFIED: ${{ inputs.modified }}
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_HEAD_REF: ${{ inputs.head-ref }}
+        INPUT_AUTHOR: ${{ inputs.author }}
+        INPUT_ENGINE: ${{ inputs.engine }}
+        INPUT_COMPARISON: ${{ inputs.comparison }}
+        INPUT_DETECT_MOVES: ${{ inputs.detect-moves }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_HTML_PREVIEW: ${{ inputs.html-preview }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
+      run: |
+        "${{ steps.python.outputs.python-path }}" "${GITHUB_ACTION_PATH}/action/redline_changed.py"
+
+    - name: Upload redlines artifact
+      id: upload
+      if: ${{ inputs.upload-artifact == 'true' && steps.redline.outputs.count != '0' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output-dir }}
+        if-no-files-found: error
+
+    - name: Link the artifact from the job summary
+      if: ${{ inputs.upload-artifact == 'true' && inputs.summary == 'true' && steps.redline.outputs.count != '0' }}
+      shell: bash
+      env:
+        ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+      run: |
+        if [ -n "${ARTIFACT_URL}" ]; then
+          {
+            echo ""
+            echo "📦 [Download the redlines artifact](${ARTIFACT_URL})"
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
