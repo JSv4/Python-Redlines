@@ -276,8 +276,10 @@ def revision_count_from_stdout(stdout: Optional[str]) -> Optional[int]:
 def redline_output_paths(output_dir: str, source_path: str) -> Tuple[Path, Path]:
     """Mirror the source's relative directory tree under output_dir."""
     rel = Path(source_path)
-    if rel.is_absolute():
-        # Joining an absolute path onto output_dir would escape it entirely.
+    # An absolute path joined onto output_dir would replace it entirely, and a
+    # '..' component would escape it. Note is_absolute() alone is not enough on
+    # Windows, where a rooted-but-driveless path ('/x/y') still hijacks a join.
+    if rel.is_absolute() or rel.drive or rel.root or '..' in rel.parts:
         try:
             rel = rel.relative_to(Path.cwd())
         except ValueError:

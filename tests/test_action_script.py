@@ -118,6 +118,9 @@ def test_redline_output_paths_absolute_source_stays_under_output_dir(tmp_path, m
     outside = '/somewhere/else/entirely/b.docx'
     docx, _ = ra.redline_output_paths('out', outside)
     assert docx.as_posix() == 'out/b.redline.docx'
+    traversal = '../outside/c.docx'
+    docx, _ = ra.redline_output_paths('out', traversal)
+    assert docx.as_posix() == 'out/c.redline.docx'
 
 
 def test_build_summary_lists_each_change():
