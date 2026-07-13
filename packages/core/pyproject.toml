@@ -5,11 +5,24 @@ build-backend = "hatchling.build"
 [project]
 name = "python-redlines"
 dynamic = ["version"]
-description = "Generate tracked-change redline .docx documents by comparing Word files."
+description = "Open-source DOCX comparison tool to generate native Word tracked changes (redlines) in Python without MS Word dependencies."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-keywords = ["docx", "redline", "diff", "tracked-changes", "openxml", "word"]
+keywords = [
+  "docx",
+  "redline",
+  "diff",
+  "tracked-changes",
+  "openxml",
+  "word",
+  "docx-comparison",
+  "compare-word-documents",
+  "track-changes-api",
+  "python-docx-diff",
+  "legal-tech",
+  "docxodus",
+]
 authors = [
   { name = "John Scrudato IV" },
 ]
@@ -37,6 +50,8 @@ all = ["python-redlines-ooxmlpowertools", "python-redlines-docxodus"]
 
 [project.urls]
 Homepage = "https://github.com/JSv4/Python-Redlines"
+Documentation = "https://jsv4.github.io/Python-Redlines/"
+Demo = "https://redlines.opensource.legal"
 Issues = "https://github.com/JSv4/Python-Redlines/issues"
 Source = "https://github.com/JSv4/Python-Redlines"
 

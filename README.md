@@ -1,13 +1,20 @@
-# Python-Redlines: Docx Redlines (Tracked Changes) for the Python Ecosystem
+# Python-Redlines: Open-Source DOCX Comparison for Python
 
-Generate tracked-change "redline" `.docx` documents from Python — compare two Word files
-and get back a third document showing every insertion, deletion, and (optionally) move as
-native Word tracked changes.
+Open-source DOCX comparison tool to generate native Word tracked changes (redlines) in
+Python — compare two Word files and get back a third document showing every insertion,
+deletion, and (optionally) move as native Word tracked changes, **without any MS Word
+dependency**.
 
 Comparing `.docx` documents has long been dominated by commercial software, with cost
 barriers and little integration flexibility. Python-Redlines brings open-source `.docx`
 redlining to the Python ecosystem so legal hackers, hobbyists, and product teams can build
 on it freely: two documents in, one redline out.
+
+**🔗 Try it now: [redlines.opensource.legal](https://redlines.opensource.legal)** — a
+live browser demo of the comparison engine, no install required. See also the
+[full documentation site](https://jsv4.github.io/Python-Redlines/) and
+[Python-Redlines vs. commercial alternatives](docs/alternatives.md) (Draftable API,
+Cloudmersive, server-side MS Word automation).
 
 ## Quick Start
 
@@ -312,6 +319,38 @@ The engines produce slightly different stdout messages:
 
 The revision counts differ between the two Docxodus engines because the algorithms differ,
 not because either is wrong.
+
+## Python-Redlines vs. Commercial Alternatives
+
+Looking for a `.docx` comparison tool and weighing it against a paid API? Short
+version: Python-Redlines is a free, MIT-licensed, self-hosted library — your documents
+never leave your process, there's no per-comparison fee, and it works fully offline.
+The full write-up, including feature-by-feature tables, lives in
+[docs/alternatives.md](docs/alternatives.md):
+
+### Python-Redlines vs Draftable API
+
+[Draftable](https://draftable.com/)'s document comparison API is metered per
+comparison and requires sending your documents to a third-party cloud service.
+Python-Redlines runs in-process with no per-call cost, no network dependency, and full
+source availability (MIT license). See
+[the detailed comparison](docs/alternatives.md#python-redlines-vs-draftable-api).
+
+### Why choose Python-Redlines over Cloudmersive
+
+[Cloudmersive](https://cloudmersive.com/)'s document comparison endpoint is one part
+of a broader, metered, closed-source API. Python-Redlines has no API keys, no quotas,
+and keeps document bytes local to your own infrastructure. See
+[the detailed comparison](docs/alternatives.md#why-choose-python-redlines-over-cloudmersive).
+
+### The problem with server-side MS Word automation
+
+Driving a headless copy of MS Word via COM/Interop to generate tracked changes
+violates Microsoft's Terms of Service for unattended server-side use and is
+operationally fragile under concurrent load. Python-Redlines produces the same native
+Word tracked-changes `.docx` output via a lightweight, self-contained comparison
+engine — no Word installation, no TOS risk. See
+[the full breakdown](docs/alternatives.md#the-problem-with-server-side-ms-word-automation).
 
 ## Development
 
