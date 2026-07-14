@@ -13,6 +13,9 @@ docxodus/**/obj/*
 packages/*/src/*/_binaries/*.tar.gz
 packages/*/src/*/_binaries/*.zip
 
+# MkDocs build output
+site/
+
 # C extensions
 *.so
 

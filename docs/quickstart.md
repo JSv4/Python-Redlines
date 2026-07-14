@@ -59,7 +59,7 @@ with open('/path/to/redline_output.docx', 'wb') as f:
 ### Step 4: Tune the Comparison (optional, DocxodusEngine only)
 
 `DocxodusEngine` accepts keyword arguments to control move detection, granularity, and
-more. See the [main README](../README.md#comparison-settings-docxodusengine-only) for
+more. See the [main README](https://github.com/JSv4/Python-Redlines#comparison-settings-docxodusengine-only) for
 the full table.
 
 ```python
@@ -72,3 +72,10 @@ output = wrapper.run_redline(
 ```
 
 `XmlPowerToolsEngine` silently ignores these kwargs — switch engines if you need them.
+
+### See also
+
+- [How to compare two Word documents programmatically in Python](tutorials/how-to-compare-word-documents-python.md) —
+  a step-by-step tutorial covering this same flow in more depth
+- [Live demo](https://redlines.opensource.legal) — try a comparison in your browser
+- [Python-Redlines vs. commercial alternatives](alternatives.md)

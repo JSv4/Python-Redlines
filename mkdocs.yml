@@ -1,0 +1,55 @@
+site_name: Python-Redlines
+site_url: https://jsv4.github.io/Python-Redlines/
+site_description: >-
+  Open-source DOCX comparison tool to generate native Word tracked changes (redlines)
+  in Python without MS Word dependencies.
+site_author: John Scrudato IV
+repo_name: JSv4/Python-Redlines
+repo_url: https://github.com/JSv4/Python-Redlines
+edit_uri: edit/main/docs/
+docs_dir: docs
+copyright: MIT License
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Tutorials:
+      - How to compare two Word documents in Python: tutorials/how-to-compare-word-documents-python.md
+  - Alternatives: alternatives.md
+  - Developer Guide: developer-guide.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/JSv4/Python-Redlines
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/python-redlines/
