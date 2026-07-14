@@ -1,0 +1,92 @@
+name: Redline Action self-test
+
+# Exercises the composite action published from this repository's root
+# (uses: JSv4/Python-Redlines@<ref>) in both of its modes. The action installs
+# python-redlines from PyPI, so this validates the action plumbing rather than
+# the working-tree Python packages (ci.yml covers those).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  explicit-pair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Redline the test fixtures
+        id: redline
+        uses: ./
+        with:
+          original: tests/fixtures/original.docx
+          modified: tests/fixtures/modified.docx
+          author: Action Self-Test
+          # 'auto' exercises the graceful-skip path until a Docx2Html release
+          # with --track-changes support is on NuGet, then starts rendering.
+          html-preview: auto
+          artifact-name: docx-redlines-explicit
+
+      - name: Assert outputs
+        env:
+          COUNT: ${{ steps.redline.outputs.count }}
+          ANY_CHANGES: ${{ steps.redline.outputs.any-changes }}
+          REDLINES: ${{ steps.redline.outputs.redlines }}
+        run: |
+          test "$COUNT" = "1"
+          test "$ANY_CHANGES" = "true"
+          echo "$REDLINES" | python3 -c '
+          import json, sys
+          [record] = json.load(sys.stdin)
+          assert record["status"] == "explicit", record
+          assert record["revisions"] == 9, record
+          '
+          test -s "redlines/tests/fixtures/modified.redline.docx"
+
+  auto-detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create a synthetic .docx change in the local history
+        run: |
+          git config user.name "Action Self-Test"
+          git config user.email "self-test@example.com"
+          mkdir -p contracts
+          cp tests/fixtures/original.docx contracts/agreement.docx
+          git add contracts
+          git commit -m "add agreement"
+          cp tests/fixtures/modified.docx contracts/agreement.docx
+          git commit -am "revise agreement"
+
+      - name: Redline the changed files
+        id: redline
+        uses: ./
+        with:
+          base-ref: HEAD~1
+          head-ref: HEAD
+          author: Action Self-Test
+          html-preview: 'false'
+          artifact-name: docx-redlines-auto
+
+      - name: Assert outputs
+        env:
+          COUNT: ${{ steps.redline.outputs.count }}
+          REDLINES: ${{ steps.redline.outputs.redlines }}
+        run: |
+          test "$COUNT" = "1"
+          echo "$REDLINES" | python3 -c '
+          import json, sys
+          [record] = json.load(sys.stdin)
+          assert record["path"] == "contracts/agreement.docx", record
+          assert record["status"] == "modified", record
+          assert record["revisions"] == 9, record
+          '
+          test -s "redlines/contracts/agreement.redline.docx"

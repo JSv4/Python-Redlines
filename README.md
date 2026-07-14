@@ -64,6 +64,80 @@ not support.
 > table anchoring). Redline output on the default path can therefore differ from 0.2.1 independently
 > of this new flag. Diff a representative document if byte-level stability matters to you.
 
+## GitHub Action
+
+This repository doubles as a GitHub Action, so a repo that versions `.docx` files can get a
+redline of every Word document a pull request changes — as a reviewable workflow artifact —
+without anyone opening Word ([#12](https://github.com/JSv4/Python-Redlines/issues/12)).
+
+```yaml
+name: DOCX redlines
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  redline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # both sides of the comparison must be fetchable
+      - uses: JSv4/Python-Redlines@main
+```
+
+That's the whole workflow. For every `.docx` file the pull request modifies (or renames), the
+action extracts the base and head versions from git, runs the redline engine, and:
+
+- writes `<output-dir>/<path>/<name>.redline.docx` with native Word tracked changes,
+- uploads the output directory as a workflow artifact,
+- posts a job-summary table (file, revision count, output paths),
+- when HTML previews are on, also writes a browser-viewable `.redline.html` per file, rendered
+  with the [Docxodus](https://github.com/JSv4/Docxodus) `Docx2Html` tool's `--track-changes`
+  mode so insertions/deletions/moves show as `ins`/`del` markup.
+
+You can also compare an explicit pair of files instead of auto-detecting:
+
+```yaml
+      - uses: JSv4/Python-Redlines@main
+        with:
+          original: docs/contract-v1.docx
+          modified: docs/contract-v2.docx
+          author: Legal Review
+```
+
+### Action inputs
+
+| Input | Default | Purpose |
+|---|---|---|
+| `original` / `modified` | — | Explicit-pair mode: compare these two files instead of auto-detecting. |
+| `files` | `**/*.docx` | Newline-separated git glob pattern(s) selecting which changed files to redline. |
+| `base-ref` / `head-ref` | event-derived | Commits to compare. Defaults: PR base (merge-base) → head on `pull_request`, `before` → `after` on `push`, else `HEAD~1` → `HEAD`. |
+| `author` | `python-redlines` | Author recorded on the tracked changes. |
+| `engine` | `docxodus` | `docxodus` or `xmlpowertools`. |
+| `comparison` | engine default | `wmlcomparer` or `docxdiff` (docxodus engine only). |
+| `detect-moves` | `false` | Move detection (docxodus engine only). |
+| `output-dir` | `redlines` | Where outputs are written (mirrors the source tree). |
+| `html-preview` | `auto` | `auto` (render when the Docx2Html tool supports `--track-changes`, else warn and skip), `true` (require), `false` (skip — no .NET needed). |
+| `summary` | `true` | Write the job-summary table. |
+| `upload-artifact` / `artifact-name` | `true` / `docx-redlines` | Artifact upload controls. |
+| `package-version` | latest | pip pin for python-redlines, e.g. `==0.3.0`. |
+| `docx2html-version` | latest | NuGet pin for the Docx2Html preview tool. |
+
+Outputs: `count` (redlines generated), `any-changes`, `redlines` (a JSON array of
+`{path, previous_path, status, revisions, redline, html, error}` records), and `artifact-url`.
+
+Notes:
+
+- Added and deleted `.docx` files are listed in the summary but not redlined — a redline
+  needs both a base and a head version. Pure renames report zero revisions without
+  invoking the engine.
+- HTML previews require a `Docx2Html` release with `--track-changes` support (Docxodus
+  ≥ 7.1.0); until that is on NuGet, the default `auto` mode skips previews with a warning.
+- The action installs python-redlines from PyPI with prebuilt engine binaries — it does
+  not build anything from the repository, so runs are fast on `ubuntu-latest` runners.
+
 ## Comparison Engines
 
 Python-Redlines gives you **three ways to compare**, across two engine classes. `DocxodusEngine`
