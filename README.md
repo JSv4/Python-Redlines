@@ -211,8 +211,8 @@ Each engine ships in its own optional companion package. Install the engine(s) y
 as extras:
 
 ```commandline
-pip install python-redlines[docxodus]          # Docxodus engine
-pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine
+pip install python-redlines[docxodus]           # Docxodus engine (recommended)
+pip install python-redlines[ooxmlpowertools]    # Open-XML-PowerTools engine (deprecated)
 pip install python-redlines[all]                # both engine packages
 ```
 

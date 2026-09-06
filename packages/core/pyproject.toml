@@ -27,7 +27,7 @@ authors = [
   { name = "John Scrudato IV" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.9",
@@ -44,6 +44,9 @@ dependencies = [
 # its extra, e.g. `pip install python-redlines[docxodus]`. All three packages
 # are released together from the same repository on each tagged release.
 [project.optional-dependencies]
+# Deprecated: wraps the archived Open-XML-PowerTools WmlComparer. Kept so that
+# anyone who needs that algorithm's output has somewhere to stand; `all` keeps
+# installing it so the extra does not change meaning under existing pins.
 ooxmlpowertools = ["python-redlines-ooxmlpowertools"]
 docxodus = ["python-redlines-docxodus"]
 all = ["python-redlines-ooxmlpowertools", "python-redlines-docxodus"]
