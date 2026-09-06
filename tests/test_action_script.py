@@ -83,6 +83,49 @@ def test_comparison_rejection_explains_the_removal():
     assert 'DocxDiff' in message
 
 
+# ---------------------------------------------------------------------------
+# HTML preview mode resolution
+#
+# Docx2Html on NuGet now supports --track-changes, so the action self-test
+# requires a rendered preview. That leaves the tolerant 'auto' path — the
+# default, and the one most callers hit — without integration coverage, so its
+# behaviour is pinned here instead, without depending on what is installed.
+# ---------------------------------------------------------------------------
+
+def test_resolve_previewer_returns_none_when_disabled(monkeypatch):
+    """'false' must not even look for the tool — that is what makes .NET optional."""
+    def fail():
+        raise AssertionError('find_docx2html() called despite html-preview: false')
+
+    monkeypatch.setattr(ra, 'find_docx2html', fail)
+    inputs = ra.Inputs.from_env({'INPUT_HTML_PREVIEW': 'false'})
+    assert ra.resolve_previewer(inputs) is None
+
+
+def test_resolve_previewer_auto_warns_and_skips_when_tool_is_missing(monkeypatch, capsys):
+    monkeypatch.setattr(ra, 'find_docx2html', lambda: None)
+    inputs = ra.Inputs.from_env({'INPUT_HTML_PREVIEW': 'auto'})
+
+    assert ra.resolve_previewer(inputs) is None
+    assert '::warning::' in capsys.readouterr().out
+
+
+def test_resolve_previewer_true_fails_when_tool_is_missing(monkeypatch):
+    monkeypatch.setattr(ra, 'find_docx2html', lambda: None)
+    inputs = ra.Inputs.from_env({'INPUT_HTML_PREVIEW': 'true'})
+
+    with pytest.raises(ra.ConfigError, match='Docx2Html'):
+        ra.resolve_previewer(inputs)
+
+
+@pytest.mark.parametrize('mode', ['auto', 'true'])
+def test_resolve_previewer_returns_the_tool_when_available(monkeypatch, mode):
+    monkeypatch.setattr(ra, 'find_docx2html', lambda: '/usr/local/bin/docx2html')
+    inputs = ra.Inputs.from_env({'INPUT_HTML_PREVIEW': mode})
+
+    assert ra.resolve_previewer(inputs) == '/usr/local/bin/docx2html'
+
+
 @pytest.mark.parametrize('env', [
     {'INPUT_ENGINE': 'wordperfect'},
     {'INPUT_HTML_PREVIEW': 'maybe'},

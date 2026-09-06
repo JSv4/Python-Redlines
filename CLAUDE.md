@@ -39,7 +39,8 @@ between two commits (PR base/head, push before/after, or explicit `base-ref`/`he
 or takes an explicit `original`/`modified` pair, runs an engine via pip-installed
 python-redlines (PyPI wheels, not the working tree), and optionally renders HTML previews
 by invoking the Docxodus `Docx2Html` dotnet tool with `--track-changes` (requires
-Docxodus ≥ 7.1.0; `html-preview: auto` skips gracefully below that). Script unit +
+Docxodus ≥ 7.1.0, satisfied by the current NuGet release, so `auto` renders; it still
+skips gracefully when the tool is absent or pinned older). Script unit +
 integration tests: `tests/test_action_script.py`; action-level self-test:
 `.github/workflows/redline-action-test.yml` (runs the action from the checkout in both
 modes and asserts on outputs).

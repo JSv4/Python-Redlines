@@ -138,8 +138,11 @@ Notes:
 - Added and deleted `.docx` files are listed in the summary but not redlined — a redline
   needs both a base and a head version. Pure renames report zero revisions without
   invoking the engine.
-- HTML previews require a `Docx2Html` release with `--track-changes` support (Docxodus
-  ≥ 7.1.0); until that is on NuGet, the default `auto` mode skips previews with a warning.
+- HTML previews need the `Docx2Html` dotnet tool with `--track-changes` support (Docxodus
+  ≥ 7.1.0). That is now on NuGet, so the default `auto` mode renders previews rather than
+  skipping them. `auto` still degrades to a warning-and-skip when the tool is missing or
+  when `docx2html-version` pins it below 7.1.0; use `html-preview: true` to require a
+  preview and fail the run if one cannot be produced.
 - The action installs python-redlines from PyPI with prebuilt engine binaries — it does
   not build anything from the repository, so runs are fast on `ubuntu-latest` runners.
 
