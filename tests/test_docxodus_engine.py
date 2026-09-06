@@ -1,8 +1,15 @@
+import io
 import re
+import zipfile
 
 import pytest
 
 from python_redlines.engines import DocxodusEngine
+
+# Measured against the Docxodus v12.1.0 binary on tests/fixtures/. Docxodus
+# v11.0.0 removed WmlComparer, so DocxDiff is the only algorithm; the count is
+# neither the 9 the old default reported nor the 11 the old opt-in reported.
+EXPECTED_REVISIONS = 10
 
 
 def load_docx_bytes(file_path):
@@ -41,25 +48,36 @@ def test_run_docxodus_with_real_files(original_docx, modified_docx):
     assert "revision(s) found" in stdout
 
 
+def test_docxodus_revision_count_is_pinned(original_docx, modified_docx):
+    """The regression anchor for the DocxDiff-only engine."""
+    engine = DocxodusEngine()
+    redline_output, stdout, stderr = engine.run_redline(
+        "TestAuthor", original_docx, modified_docx,
+    )
+    assert stderr is None
+    assert revision_count(stdout) == EXPECTED_REVISIONS
+    assert redline_output[:2] == b"PK"
+
+
+def test_docxodus_output_is_a_valid_docx_with_tracked_changes(original_docx, modified_docx):
+    engine = DocxodusEngine()
+    redline_output, _, _ = engine.run_redline("TestAuthor", original_docx, modified_docx)
+
+    with zipfile.ZipFile(io.BytesIO(redline_output)) as archive:
+        assert archive.testzip() is None
+        document_xml = archive.read("word/document.xml").decode("utf-8")
+
+    assert "<w:ins " in document_xml
+    assert "<w:del " in document_xml
+
+
 # --- Integration tests for comparison settings ---
 
 def test_docxodus_with_detect_moves(original_docx, modified_docx):
     engine = DocxodusEngine()
     redline_output, stdout, stderr = engine.run_redline(
         "TestAuthor", original_docx, modified_docx,
-        detect_moves=True, simplify_move_markup=True,
-    )
-    assert redline_output is not None
-    assert len(redline_output) > 0
-    assert stderr is None
-    assert "revision(s) found" in stdout
-
-
-def test_docxodus_with_detail_threshold(original_docx, modified_docx):
-    engine = DocxodusEngine()
-    redline_output, stdout, stderr = engine.run_redline(
-        "TestAuthor", original_docx, modified_docx,
-        detail_threshold=0.5,
+        detect_moves=True,
     )
     assert redline_output is not None
     assert len(redline_output) > 0
@@ -92,13 +110,12 @@ def test_docxodus_with_no_format_changes(original_docx, modified_docx):
 
 
 def test_docxodus_with_all_options(original_docx, modified_docx):
+    """Every surviving setting at once, and the CLI stays quiet on stderr."""
     engine = DocxodusEngine()
     redline_output, stdout, stderr = engine.run_redline(
         "TestAuthor", original_docx, modified_docx,
-        detail_threshold=0.3,
         case_insensitive=True,
         detect_moves=True,
-        simplify_move_markup=True,
         move_similarity_threshold=0.7,
         move_minimum_word_count=2,
         detect_format_changes=False,
@@ -111,13 +128,86 @@ def test_docxodus_with_all_options(original_docx, modified_docx):
     assert "revision(s) found" in stdout
 
 
-# --- Validation tests ---
+# --- Settings removed with WmlComparer (Docxodus v11.0.0) ---
+#
+# These must raise rather than be dropped. Two of them are still *accepted* by
+# the v12 CLI, which warns on stderr and ignores them; `engine` is rejected as
+# an unknown flag. Silently discarding any of them would hand the caller
+# DocxDiff output while they believe they configured something else.
 
-def test_docxodus_invalid_detail_threshold():
+@pytest.mark.parametrize("value", ["wmlcomparer", "docxdiff", "WmlComparer", "  docxdiff  "])
+def test_engine_kwarg_is_rejected(value):
     engine = DocxodusEngine()
-    with pytest.raises(ValueError, match="detail_threshold must be a float between 0.0 and 1.0"):
-        engine._build_command("Author", "orig", "mod", "out", detail_threshold=1.5)
+    with pytest.raises(ValueError, match=r"engine .*no longer"):
+        engine._build_command("Author", "orig", "mod", "out", engine=value)
 
+
+def test_detail_threshold_is_rejected():
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match=r"detail_threshold .*no longer"):
+        engine._build_command("Author", "orig", "mod", "out", detail_threshold=0.5)
+
+
+def test_simplify_move_markup_is_rejected():
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match=r"simplify_move_markup .*no longer"):
+        engine._build_command("Author", "orig", "mod", "out", simplify_move_markup=True)
+
+
+@pytest.mark.parametrize("kwarg", ["engine", "detail_threshold", "simplify_move_markup"])
+def test_removed_kwarg_error_names_the_replacement(kwarg):
+    """The message has to tell the reader what to do, not just that they are wrong."""
+    values = {"engine": "docxdiff", "detail_threshold": 0.5, "simplify_move_markup": True}
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError) as excinfo:
+        engine._build_command("Author", "orig", "mod", "out", **{kwarg: values[kwarg]})
+
+    message = str(excinfo.value)
+    assert "v11.0.0" in message
+    assert "DocxDiff" in message
+
+
+def test_removed_kwarg_is_rejected_even_when_false():
+    """The check is on the keyword being present, whatever its value."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="no longer"):
+        engine._build_command("Author", "orig", "mod", "out", simplify_move_markup=False)
+
+
+def test_removed_kwarg_rejection_reaches_run_redline(original_docx, modified_docx):
+    """The guard is on the public call, not only on the private builder."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="no longer"):
+        engine.run_redline("TestAuthor", original_docx, modified_docx, engine="docxdiff")
+
+
+# --- Unknown settings ---
+
+def test_unknown_kwarg_is_rejected():
+    """A typo used to be discarded in silence, which reads as 'the setting did nothing'."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="detial_threshold"):
+        engine._build_command("Author", "orig", "mod", "out", detial_threshold=0.5)
+
+
+def test_unknown_kwarg_error_lists_the_supported_settings():
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError) as excinfo:
+        engine._build_command("Author", "orig", "mod", "out", nonsense=True)
+
+    message = str(excinfo.value)
+    assert "case_insensitive" in message
+    assert "detect_moves" in message
+
+
+def test_removed_kwarg_beats_unknown_kwarg_reporting():
+    """A removed setting gets its specific message, not the generic 'unknown' one."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="no longer"):
+        engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", nonsense=True)
+
+
+# --- Validation of surviving settings ---
 
 def test_docxodus_invalid_move_similarity_threshold():
     engine = DocxodusEngine()
@@ -137,7 +227,7 @@ def test_docxodus_invalid_move_minimum_word_count_type():
         engine._build_command("Author", "orig", "mod", "out", move_minimum_word_count=2.5)
 
 
-# --- Unit test for _build_command flag construction ---
+# --- Unit tests for _build_command flag construction ---
 
 def test_build_command_default():
     engine = DocxodusEngine()
@@ -149,14 +239,19 @@ def test_build_command_default():
     assert len(cmd) == 5  # binary + 3 positional + --author
 
 
+def test_build_command_never_emits_an_engine_flag():
+    """--engine= was removed from the CLI in v11.0.0; emitting it exits 1."""
+    engine = DocxodusEngine()
+    cmd = engine._build_command("Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx")
+    assert not any(str(arg).startswith("--engine") for arg in cmd)
+
+
 def test_build_command_with_all_flags():
     engine = DocxodusEngine()
     cmd = engine._build_command(
         "Author", "/tmp/orig.docx", "/tmp/mod.docx", "/tmp/out.docx",
-        detail_threshold=0.5,
         case_insensitive=True,
         detect_moves=True,
-        simplify_move_markup=True,
         move_similarity_threshold=0.7,
         move_minimum_word_count=2,
         detect_format_changes=False,
@@ -166,10 +261,8 @@ def test_build_command_with_all_flags():
     assert "--author=Author" in cmd
     assert "--case-insensitive" in cmd
     assert "--detect-moves" in cmd
-    assert "--simplify-move-markup" in cmd
     assert "--no-detect-format-changes" in cmd
     assert "--no-conflate-spaces" in cmd
-    assert "--detail-threshold=0.5" in cmd
     assert "--move-similarity-threshold=0.7" in cmd
     assert "--move-minimum-word-count=2" in cmd
     assert "--date-time=2025-01-01T00:00:00Z" in cmd
@@ -197,149 +290,3 @@ def test_build_command_negatable_true_not_added():
     )
     assert "--no-detect-format-changes" not in cmd
     assert "--no-conflate-spaces" not in cmd
-
-
-# --- Engine selection (Docxodus v7.0.0 --engine flag) ---
-
-def test_build_command_engine_omitted_by_default():
-    """No engine= kwarg means no --engine flag: the argv stays as it was pre-v7."""
-    engine = DocxodusEngine()
-    cmd = engine._build_command("Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx")
-    assert not any(arg.startswith("--engine") for arg in cmd)
-
-
-def test_build_command_engine_docxdiff():
-    engine = DocxodusEngine()
-    cmd = engine._build_command(
-        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="docxdiff",
-    )
-    assert "--engine=docxdiff" in cmd
-
-
-def test_build_command_engine_explicit_wmlcomparer():
-    engine = DocxodusEngine()
-    cmd = engine._build_command(
-        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="wmlcomparer",
-    )
-    assert "--engine=wmlcomparer" in cmd
-
-
-def test_build_command_engine_is_normalized():
-    engine = DocxodusEngine()
-    cmd = engine._build_command(
-        "Author", "/tmp/o.docx", "/tmp/m.docx", "/tmp/out.docx", engine="  DocxDiff  ",
-    )
-    assert "--engine=docxdiff" in cmd
-
-
-def test_build_command_unknown_engine():
-    engine = DocxodusEngine()
-    with pytest.raises(ValueError, match="engine must be one of"):
-        engine._build_command("Author", "orig", "mod", "out", engine="bogus")
-
-
-def test_build_command_non_string_engine():
-    engine = DocxodusEngine()
-    with pytest.raises(ValueError, match="engine must be a string"):
-        engine._build_command("Author", "orig", "mod", "out", engine=1)
-
-
-@pytest.mark.parametrize("kwarg, value", [
-    ("detail_threshold", 0.5),
-    ("detail_threshold", 0.0),
-    ("simplify_move_markup", True),
-    ("simplify_move_markup", False),
-    ("detect_format_changes", True),
-    ("detect_format_changes", False),
-])
-def test_docxdiff_rejects_wmlcomparer_only_kwargs(kwarg, value):
-    """docxdiff silently ignores these in C#; reject on key presence, whatever the value."""
-    engine = DocxodusEngine()
-    expected = f"{kwarg} is not supported by the 'docxdiff' engine"
-    with pytest.raises(ValueError, match=expected):
-        engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", **{kwarg: value})
-
-
-def test_wmlcomparer_still_allows_its_own_kwargs():
-    engine = DocxodusEngine()
-    cmd = engine._build_command(
-        "Author", "orig", "mod", "out",
-        engine="wmlcomparer", detail_threshold=0.5, simplify_move_markup=True,
-    )
-    assert "--engine=wmlcomparer" in cmd
-    assert "--detail-threshold=0.5" in cmd
-    assert "--simplify-move-markup" in cmd
-
-
-def test_docxdiff_allows_the_kwargs_it_honours():
-    engine = DocxodusEngine()
-    cmd = engine._build_command(
-        "Author", "orig", "mod", "out",
-        engine="docxdiff", detect_moves=True, case_insensitive=True,
-        conflate_spaces=False, move_similarity_threshold=0.7, move_minimum_word_count=2,
-    )
-    assert "--engine=docxdiff" in cmd
-    assert "--detect-moves" in cmd
-    assert "--case-insensitive" in cmd
-    assert "--no-conflate-spaces" in cmd
-    assert "--move-similarity-threshold=0.7" in cmd
-    assert "--move-minimum-word-count=2" in cmd
-
-
-def test_docxdiff_engine_check_precedes_range_check():
-    """engine='docxdiff' + an out-of-range detail_threshold reports the engine problem."""
-    engine = DocxodusEngine()
-    with pytest.raises(ValueError, match="not supported by the 'docxdiff' engine"):
-        engine._build_command("Author", "orig", "mod", "out", engine="docxdiff", detail_threshold=1.5)
-
-
-# --- Engine selection, end to end ---
-
-def test_docxodus_default_engine_is_wmlcomparer(original_docx, modified_docx):
-    """The default path is the regression anchor: 9 revisions, exactly as before v7."""
-    engine = DocxodusEngine()
-    redline_output, stdout, stderr = engine.run_redline(
-        "TestAuthor", original_docx, modified_docx,
-    )
-    assert stderr is None
-    assert "Redline complete: 9 revision(s) found" in stdout
-    assert redline_output[:2] == b"PK"
-
-
-def test_docxodus_docxdiff_engine(original_docx, modified_docx):
-    """docxdiff is a different algorithm and finds a different number of revisions."""
-    engine = DocxodusEngine()
-    redline_output, stdout, stderr = engine.run_redline(
-        "TestAuthor", original_docx, modified_docx, engine="docxdiff",
-    )
-    assert stderr is None
-    assert "Redline complete: 11 revision(s) found" in stdout
-    assert redline_output[:2] == b"PK"
-
-
-def test_docxodus_explicit_wmlcomparer_matches_default(original_docx, modified_docx):
-    engine = DocxodusEngine()
-    _, default_stdout, _ = engine.run_redline("TestAuthor", original_docx, modified_docx)
-    _, explicit_stdout, _ = engine.run_redline(
-        "TestAuthor", original_docx, modified_docx, engine="wmlcomparer",
-    )
-    default_count = revision_count(default_stdout)
-    explicit_count = revision_count(explicit_stdout)
-    assert explicit_count == default_count
-    assert default_count == 9
-
-
-def test_docxdiff_output_is_a_valid_docx_with_tracked_changes(original_docx, modified_docx):
-    import io
-    import zipfile
-
-    engine = DocxodusEngine()
-    redline_output, _, _ = engine.run_redline(
-        "TestAuthor", original_docx, modified_docx, engine="docxdiff",
-    )
-    with zipfile.ZipFile(io.BytesIO(redline_output)) as archive:
-        assert archive.testzip() is None
-        document_xml = archive.read("word/document.xml").decode("utf-8")
-
-    assert "<w:ins " in document_xml
-    assert "<w:del " in document_xml

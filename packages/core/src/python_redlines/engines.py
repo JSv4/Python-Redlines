@@ -6,6 +6,7 @@ import platform
 import subprocess
 import tarfile
 import tempfile
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Optional, Tuple, Union
@@ -138,23 +139,26 @@ class BaseEngine(object):
         Runs the redline binary. The 'original' and 'modified' arguments can be either bytes or file paths
         (as ``str`` or ``pathlib.Path``). Returns the redline output as bytes.
 
-        Additional keyword arguments are passed to _build_command() for engine-specific options.
-        DocxodusEngine supports: engine, detail_threshold, case_insensitive, detect_moves,
-        simplify_move_markup, move_similarity_threshold, move_minimum_word_count,
-        detect_format_changes, conflate_spaces, date_time.
+        A path the caller supplies is never deleted; only scratch files this
+        method creates are cleaned up.
 
-        DocxodusEngine's engine kwarg selects the comparison algorithm: 'wmlcomparer'
-        (the default) or 'docxdiff'. The docxdiff engine ignores detail_threshold,
-        simplify_move_markup, and detect_format_changes, so passing them alongside
-        engine='docxdiff' raises ValueError rather than silently changing nothing.
+        Additional keyword arguments are passed to _build_command() for engine-specific
+        options. DocxodusEngine supports: case_insensitive, detect_moves,
+        move_similarity_threshold, move_minimum_word_count, detect_format_changes,
+        conflate_spaces, date_time. It raises ValueError for unrecognised settings and
+        for the WmlComparer-era settings removed in Docxodus v11.0.0 (engine,
+        detail_threshold, simplify_move_markup). XmlPowerToolsEngine ignores kwargs.
         """
-        temp_files = []
+        scratch_files = []
         try:
+            # mkstemp, not NamedTemporaryFile: we want a path, and NamedTemporaryFile
+            # hands back an open file object that nothing here would close (issue #30).
+            handle, target_path = tempfile.mkstemp(suffix='.docx')
+            os.close(handle)
+            scratch_files.append(target_path)
 
-            target_path = tempfile.NamedTemporaryFile(delete=False).name
-            original_path = self._write_to_temp_file(original) if isinstance(original, bytes) else original
-            modified_path = self._write_to_temp_file(modified) if isinstance(modified, bytes) else modified
-            temp_files.extend([target_path, original_path, modified_path])
+            original_path = self._as_path(original, scratch_files)
+            modified_path = self._as_path(modified, scratch_files)
 
             command = self._build_command(author_tag, original_path, modified_path, target_path, **kwargs)
 
@@ -169,14 +173,27 @@ class BaseEngine(object):
             return redline_output, stdout_output, stderr_output
 
         finally:
-            self._cleanup_temp_files(temp_files)
+            self._cleanup_temp_files(scratch_files)
+
+    def _as_path(self, document, scratch_files):
+        """Return a filesystem path for *document*, writing bytes out if needed.
+
+        Only a path this method creates is appended to *scratch_files*. A path
+        the caller passed in is the caller's own document, and registering it
+        for cleanup would delete the file they asked us to compare.
+        """
+        if isinstance(document, bytes):
+            path = self._write_to_temp_file(document)
+            scratch_files.append(path)
+            return path
+        return os.fspath(document)
 
     def _cleanup_temp_files(self, temp_files):
         for file_path in temp_files:
             try:
                 os.remove(file_path)
             except OSError as e:
-                print(f"Error deleting temp file {file_path}: {e}")
+                logger.warning("Error deleting temp file %s: %s", file_path, e)
 
     def _write_to_temp_file(self, data):
         """
@@ -193,24 +210,49 @@ class XmlPowerToolsEngine(BaseEngine):
     BINARY_BASE_NAME = 'redlines'
     EXTRA_NAME = 'ooxmlpowertools'
 
+    def __init__(self, target_path: Optional[str] = None):
+        warnings.warn(
+            "XmlPowerToolsEngine wraps the original, unmaintained Open-XML-PowerTools "
+            "WmlComparer and is deprecated; it will be removed in a future major "
+            "release. Use DocxodusEngine, which is actively maintained and runs the "
+            "DocxDiff algorithm.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(target_path)
+
 
 class DocxodusEngine(BaseEngine):
     BINARY_PACKAGE = 'python_redlines_docxodus'
     BINARY_BASE_NAME = 'redline'
     EXTRA_NAME = 'docxodus'
 
-    # Comparison engines accepted by the redline CLI's --engine flag.
-    ENGINES = ('wmlcomparer', 'docxdiff')
-
-    # DocxCompare.ToDocxDiffSettings drops these on the docxdiff branch, and the CLI
-    # accepts them there without complaint, so reject them before we shell out.
-    _WMLCOMPARER_ONLY = ('detail_threshold', 'simplify_move_markup', 'detect_format_changes')
+    # Settings that died with WmlComparer in Docxodus v11.0.0. They are rejected
+    # rather than dropped, because dropping them would not be a breaking change
+    # but a wrong-answer one: the v12 CLI rejects --engine as an unknown flag,
+    # and merely warns-and-ignores the other two, so a caller who passed
+    # engine='wmlcomparer' would silently receive DocxDiff output believing they
+    # had selected something else.
+    _REMOVED_KWARGS = {
+        'engine': (
+            "the comparison-engine selector was removed in Docxodus v11.0.0, which "
+            "deleted WmlComparer. DocxDiff is now the only algorithm — drop the argument"
+        ),
+        'detail_threshold': (
+            "it tuned WmlComparer's LCS granularity and went with it in Docxodus "
+            "v11.0.0. DocxDiff's granularity is structural, with no equivalent knob — "
+            "drop the argument"
+        ),
+        'simplify_move_markup': (
+            "it worked around WmlComparer's move markup and went with it in Docxodus "
+            "v11.0.0. DocxDiff renders moves natively — drop the argument"
+        ),
+    }
 
     # Boolean flags (default False — presence enables)
     _BOOL_FLAGS = [
         ('case_insensitive', '--case-insensitive'),
         ('detect_moves', '--detect-moves'),
-        ('simplify_move_markup', '--simplify-move-markup'),
     ]
 
     # Negatable flags (default True — --no- prefix disables)
@@ -221,43 +263,31 @@ class DocxodusEngine(BaseEngine):
 
     # Value flags
     _VALUE_FLAGS = [
-        ('detail_threshold', '--detail-threshold'),
         ('move_similarity_threshold', '--move-similarity-threshold'),
         ('move_minimum_word_count', '--move-minimum-word-count'),
         ('date_time', '--date-time'),
     ]
 
     @classmethod
-    def _normalize_engine(cls, kwargs):
-        """The chosen engine, lowercased and stripped, or None if the caller didn't pick one."""
-        if 'engine' not in kwargs:
-            return None
-
-        engine = kwargs['engine']
-        if not isinstance(engine, str):
-            raise ValueError(f"engine must be a string, got {engine!r}")
-
-        normalized = engine.strip().lower()
-        if normalized not in cls.ENGINES:
-            raise ValueError(
-                f"engine must be one of {', '.join(cls.ENGINES)}, got {engine!r}"
-            )
-        return normalized
+    def _supported_kwargs(cls):
+        """Every comparison setting this engine still understands."""
+        return {name for name, _ in (*cls._BOOL_FLAGS, *cls._NEG_FLAGS, *cls._VALUE_FLAGS)}
 
     @classmethod
     def _validate_kwargs(cls, kwargs):
-        if cls._normalize_engine(kwargs) == 'docxdiff':
-            for name in cls._WMLCOMPARER_ONLY:
-                if name in kwargs:
-                    raise ValueError(
-                        f"{name} is not supported by the 'docxdiff' engine "
-                        f"(WmlComparer-only). Remove it or use engine='wmlcomparer'."
-                    )
+        # Removed settings first, so they get their specific explanation rather
+        # than being lumped in with typos below.
+        for name, reason in cls._REMOVED_KWARGS.items():
+            if name in kwargs:
+                raise ValueError(f"{name} is no longer supported: {reason}.")
 
-        if 'detail_threshold' in kwargs:
-            val = kwargs['detail_threshold']
-            if not isinstance(val, (int, float)) or val < 0.0 or val > 1.0:
-                raise ValueError(f"detail_threshold must be a float between 0.0 and 1.0, got {val!r}")
+        supported = cls._supported_kwargs()
+        unknown = sorted(set(kwargs) - supported)
+        if unknown:
+            raise ValueError(
+                f"Unknown comparison setting(s): {', '.join(unknown)}. "
+                f"Supported settings: {', '.join(sorted(supported))}."
+            )
 
         if 'move_similarity_threshold' in kwargs:
             val = kwargs['move_similarity_threshold']
@@ -271,13 +301,9 @@ class DocxodusEngine(BaseEngine):
 
     def _build_command(self, author_tag, original_path, modified_path, target_path, **kwargs):
         self._validate_kwargs(kwargs)
-        engine = self._normalize_engine(kwargs)
 
         cmd = [self.extracted_binaries_path, original_path, modified_path, target_path,
                f'--author={author_tag}']
-
-        if engine is not None:
-            cmd.append(f'--engine={engine}')
 
         for kwarg, flag in self._BOOL_FLAGS:
             if kwargs.get(kwarg):

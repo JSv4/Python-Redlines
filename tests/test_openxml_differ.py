@@ -1,6 +1,6 @@
-import os
+import warnings
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from python_redlines.engines import XmlPowerToolsEngine
 
@@ -22,7 +22,9 @@ def modified_docx():
 
 def test_run_redlines_with_real_files(original_docx, modified_docx):
     # Create an instance of the wrapper
-    wrapper = XmlPowerToolsEngine()
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', DeprecationWarning)
+        wrapper = XmlPowerToolsEngine()
 
     author_tag = "TestAuthor"
 
@@ -35,3 +37,24 @@ def test_run_redlines_with_real_files(original_docx, modified_docx):
     assert len(redline_output) > 0
     assert stderr is None
     assert "Revisions found: 9" in stdout
+
+
+def test_xmlpowertools_engine_is_deprecated():
+    """It wraps the original, unmaintained Open-XML-PowerTools WmlComparer.
+
+    The package keeps shipping and the class keeps working; instantiating it
+    has to say that it is on the way out and name what to use instead.
+    """
+    with pytest.warns(DeprecationWarning) as record:
+        XmlPowerToolsEngine()
+
+    message = str(record[0].message)
+    assert "DocxodusEngine" in message
+
+
+def test_xmlpowertools_deprecation_points_at_the_caller():
+    """stacklevel must blame the user's construction site, not engines.py."""
+    with pytest.warns(DeprecationWarning) as record:
+        XmlPowerToolsEngine()
+
+    assert record[0].filename == __file__
