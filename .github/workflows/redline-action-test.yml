@@ -27,9 +27,10 @@ jobs:
           original: tests/fixtures/original.docx
           modified: tests/fixtures/modified.docx
           author: Action Self-Test
-          # 'auto' exercises the graceful-skip path until a Docx2Html release
-          # with --track-changes support is on NuGet, then starts rendering.
-          html-preview: auto
+          # Docx2Html on NuGet now supports --track-changes, so previews are
+          # required here: 'true' fails the run rather than skipping, which is
+          # what keeps the README's claim that previews render honest.
+          html-preview: true
           artifact-name: docx-redlines-explicit
 
       - name: Assert outputs
@@ -49,8 +50,11 @@ jobs:
           # The exact count is pinned in tests/test_docxodus_engine.py, which runs
           # against the working tree.
           assert isinstance(record["revisions"], int) and record["revisions"] > 0, record
+          # html-preview is 'true' above, so a preview is part of the contract now.
+          assert record["html"], record
           '
           test -s "redlines/tests/fixtures/modified.redline.docx"
+          test -s "redlines/tests/fixtures/modified.redline.html"
 
   auto-detect:
     runs-on: ubuntu-latest
