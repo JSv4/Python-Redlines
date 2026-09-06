@@ -7,9 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Python-Redlines generates `.docx` redline/tracked-changes documents by comparing two Word files. A pure-Python wrapper drives compiled C# (.NET 10) engine binaries; the Python layer handles platform detection, binary extraction, temp file management, and subprocess execution.
 
 Two comparison engines are available:
-- **XmlPowerToolsEngine** — wraps Open-XML-PowerTools WmlComparer (original engine)
+- **XmlPowerToolsEngine** — wraps Open-XML-PowerTools WmlComparer (original engine).
+  Deprecated as of 1.0.0: instantiating it emits a `DeprecationWarning`. Still published.
 - **DocxodusEngine** — wraps Docxodus, a modernized .NET 10.0 fork with better move detection.
-  Takes `engine="wmlcomparer"` (default) or `engine="docxdiff"` to pick the comparison algorithm.
+  Runs `DocxDiff`, its only algorithm — Docxodus v11.0.0 deleted `WmlComparer`.
 
 ## Monorepo structure — three published packages
 
@@ -78,10 +79,18 @@ python -m build --wheel packages/docxodus      # needs an archive in _binaries/ 
      package is missing, with the `pip install` command to fix it.
 
    Both engines expose `run_redline(author_tag, original, modified, **kwargs)`.
-   `DocxodusEngine` overrides `_build_command()` to translate kwargs (e.g. `engine`,
-   `detect_moves`, `detail_threshold`) into CLI flags, and raises `ValueError` when a
-   WmlComparer-only kwarg is combined with `engine="docxdiff"`. `XmlPowerToolsEngine` uses
-   the legacy 4-positional-arg format and ignores kwargs.
+   `DocxodusEngine` overrides `_build_command()` to translate kwargs (e.g. `detect_moves`,
+   `case_insensitive`) into CLI flags. It raises `ValueError` for unknown kwargs and for the
+   three removed with WmlComparer in Docxodus v11.0.0 — `engine`, `detail_threshold`,
+   `simplify_move_markup` — rather than dropping them: the CLI warn-and-ignores two of them,
+   so passing them through would report a setting that did nothing, and silently dropping
+   `engine="wmlcomparer"` would return DocxDiff output to a caller who asked for something
+   else. `XmlPowerToolsEngine` uses the legacy 4-positional-arg format and ignores kwargs.
+
+   `BaseEngine.run_redline` registers **only files it created** for cleanup. Adding a
+   caller-supplied path there deletes the user's own document (fixed in 1.0.0), and the
+   output scratch file uses `mkstemp`, not `NamedTemporaryFile(delete=False).name`, which
+   leaked an unclosed file object (issue #30).
 
 2. **Binary packages** ship one platform archive under
    `src/<pkg>/_binaries/<rid>.tar.gz` (or `.zip` for Windows). The archive is
@@ -119,10 +128,15 @@ so all three always share one version. Bump only that file.
 Tests live in repo-root `tests/` and must be run from the repo root (fixtures use
 relative paths like `tests/fixtures/original.docx`). They require all three packages
 installed and the binaries built for the current platform. The XmlPowerToolsEngine
-integration test validates exactly 9 revisions on the fixture documents.
+integration test validates exactly 9 revisions on the fixture documents; the
+DocxodusEngine one validates 10.
 
 ## Stdout Format Differences
 
 - **XmlPowerToolsEngine**: `"Revisions found: 9"`
-- **DocxodusEngine**, default / `engine="wmlcomparer"`: `"Redline complete: 9 revision(s) found"`
-- **DocxodusEngine**, `engine="docxdiff"`: `"Redline complete: 11 revision(s) found"`
+- **DocxodusEngine**: `"Redline complete: 10 revision(s) found"`
+
+The Docxodus count is measured, not derived — re-measure it after any submodule bump and
+re-pin `EXPECTED_REVISIONS` in `tests/test_docxodus_engine.py`. Clear
+`~/.cache/python-redlines` first: the extraction cache keys on the installed binary
+*package* version, so a rebuilt binary at an unchanged version is otherwise ignored.

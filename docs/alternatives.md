@@ -66,10 +66,9 @@ processing API, including a document comparison endpoint, billed per API call.
   keeps document bytes in your own process the entire time — nothing to configure for
   data residency because nothing leaves.
 - **Redline fidelity.** Python-Redlines' default engine (Docxodus) supports move
-  detection, format-change detection, and structure-aware diffing (via the optional
-  `docxdiff` algorithm) — producing native Word tracked-changes output tuned
-  specifically for `.docx`, rather than a generic document-diff endpoint shared across
-  many file formats.
+  detection, format-change detection, and structure-aware diffing — producing native
+  Word tracked-changes output tuned specifically for `.docx`, rather than a generic
+  document-diff endpoint shared across many file formats.
 - **No vendor lock-in.** Cloudmersive's comparison logic is closed and proprietary.
   Python-Redlines is MIT-licensed open source: inspect the C# comparison engines,
   build them yourself, or contribute a fix upstream.
@@ -98,9 +97,9 @@ launching Word, and without the TOS risk.
 
 ## High-performance, cross-platform document diffing
 
-Python-Redlines' default engine, [Docxodus](https://github.com/JSv4/Docxodus), is a
-modernized, actively-maintained .NET 10 fork of Open-XML-PowerTools' `WmlComparer` —
-a high-performance document diffing engine purpose-built for cross-platform Word
+Python-Redlines' default engine, [Docxodus](https://github.com/JSv4/Docxodus), is an
+actively-maintained .NET 10 document toolchain whose `DocxDiff` algorithm is a
+structure-aware, high-performance diffing engine purpose-built for cross-platform Word
 document comparison. It ships as a prebuilt, self-contained binary embedded directly
 in the Python wheel for Linux, macOS, and Windows (x64 and arm64), so there's no .NET
 SDK to install and no compilation step for end users — just `pip install

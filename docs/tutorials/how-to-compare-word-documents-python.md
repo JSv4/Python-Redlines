@@ -93,26 +93,27 @@ redline_bytes, stdout, stderr = engine.run_redline("Reviewer", original_bytes, m
 with open("redline.docx", "wb") as f:
     f.write(redline_bytes)
 
-print(stdout)  # e.g. "Redline complete: 9 revision(s) found"
+print(stdout)  # e.g. "Redline complete: 10 revision(s) found"
 ```
 
 ## Tuning the comparison
 
-`DocxodusEngine` accepts keyword arguments for move detection, comparison
-granularity, and more:
+`DocxodusEngine` accepts keyword arguments for move detection, case sensitivity,
+and more:
 
 ```python
 redline_bytes, stdout, stderr = engine.run_redline(
     "Reviewer", original_bytes, modified_bytes,
     detect_moves=True,
-    simplify_move_markup=True,  # required alongside detect_moves for Word compatibility
-    detail_threshold=0.3,       # lower = more detailed diff
     case_insensitive=True,
 )
 ```
 
+An unrecognised setting raises `ValueError` rather than being ignored, so a typo
+tells you about itself.
+
 See the [comparison settings reference](https://github.com/JSv4/Python-Redlines#comparison-settings-docxodusengine-only)
-for every option and which engine supports it.
+for every option.
 
 ## Why not automate MS Word instead?
 
@@ -129,7 +130,7 @@ more on this and other trade-offs (Draftable API, Cloudmersive, cloud data priva
 
 - [Quickstart guide](../quickstart.md) — the same walkthrough with more detail on
   engine choice
-- [Comparison engines](https://github.com/JSv4/Python-Redlines#comparison-engines) — `wmlcomparer` vs
-  `docxdiff` vs the legacy Open-XML-PowerTools engine
+- [Comparison engines](https://github.com/JSv4/Python-Redlines#comparison-engines) — Docxodus's
+  `DocxDiff` vs the deprecated Open-XML-PowerTools engine
 - [Live demo](https://redlines.opensource.legal) — try a comparison in your browser
   first
