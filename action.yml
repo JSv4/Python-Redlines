@@ -47,8 +47,10 @@ inputs:
     default: 'docxodus'
   comparison:
     description: >-
-      Comparison algorithm for the docxodus engine: 'wmlcomparer' (default) or
-      'docxdiff'.
+      REMOVED. Docxodus v11.0.0 deleted WmlComparer, so there is no longer an
+      algorithm to select; DocxDiff is the only one. Setting this fails the run
+      rather than silently comparing with something other than what was asked
+      for. Remove the input.
     required: false
     default: ''
   detect-moves:

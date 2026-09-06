@@ -31,7 +31,16 @@ HTML_PREVIEW_MODES = ('auto', 'true', 'false')
 
 # kwargs only DocxodusEngine understands; XmlPowerToolsEngine would silently
 # ignore them, so requesting one with engine=xmlpowertools is a config error.
-DOCXODUS_ONLY_INPUTS = ('comparison', 'detect-moves')
+DOCXODUS_ONLY_INPUTS = ('detect-moves',)
+
+# Docxodus v11.0.0 deleted WmlComparer, and with it the engine selector this
+# input mapped onto. Rejected outright rather than ignored: a workflow that
+# pinned 'wmlcomparer' would otherwise keep running and quietly produce
+# DocxDiff output.
+COMPARISON_REMOVED = (
+    "Input 'comparison' is no longer supported: the comparison-engine selector was "
+    "removed in Docxodus v11.0.0, which deleted WmlComparer. DocxDiff is now the only "
+    "algorithm — remove the input.")
 
 
 class ConfigError(Exception):
@@ -116,18 +125,15 @@ class Inputs:
             raise ConfigError(
                 "Inputs 'original' and 'modified' must be provided together "
                 "(explicit-pair mode) or both left empty (auto-detect mode).")
+        if self.comparison:
+            raise ConfigError(COMPARISON_REMOVED)
         if self.engine != 'docxodus':
-            if self.comparison:
-                raise ConfigError(
-                    "Input 'comparison' is only supported by the docxodus engine.")
             if self.detect_moves:
                 raise ConfigError(
                     "Input 'detect-moves' is only supported by the docxodus engine.")
 
     def engine_kwargs(self) -> Dict:
         kwargs: Dict = {}
-        if self.comparison:
-            kwargs['engine'] = self.comparison
         if self.detect_moves:
             kwargs['detect_moves'] = True
         return kwargs

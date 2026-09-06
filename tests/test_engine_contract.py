@@ -1,6 +1,16 @@
+import warnings
+
 import pytest
 
 from python_redlines.engines import XmlPowerToolsEngine, DocxodusEngine
+
+
+def make_engine(engine_class):
+    """Instantiate without noise: XmlPowerToolsEngine's deprecation is expected here,
+    and is asserted on directly in tests/test_openxml_differ.py."""
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', DeprecationWarning)
+        return engine_class()
 
 
 def load_docx_bytes(file_path):
@@ -20,7 +30,7 @@ def modified_docx():
 
 @pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
 def test_engine_returns_bytes(engine_class, original_docx, modified_docx):
-    engine = engine_class()
+    engine = make_engine(engine_class)
     redline_output, stdout, stderr = engine.run_redline("TestAuthor", original_docx, modified_docx)
 
     assert redline_output is not None
@@ -30,7 +40,7 @@ def test_engine_returns_bytes(engine_class, original_docx, modified_docx):
 
 @pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
 def test_engine_no_stderr(engine_class, original_docx, modified_docx):
-    engine = engine_class()
+    engine = make_engine(engine_class)
     _, _, stderr = engine.run_redline("TestAuthor", original_docx, modified_docx)
 
     assert stderr is None
@@ -38,7 +48,7 @@ def test_engine_no_stderr(engine_class, original_docx, modified_docx):
 
 @pytest.mark.parametrize("engine_class", [XmlPowerToolsEngine, DocxodusEngine])
 def test_engine_has_stdout(engine_class, original_docx, modified_docx):
-    engine = engine_class()
+    engine = make_engine(engine_class)
     _, stdout, _ = engine.run_redline("TestAuthor", original_docx, modified_docx)
 
     assert stdout is not None

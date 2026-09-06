@@ -47,8 +47,8 @@ required.
 - **Native tracked-changes output** — the redline `.docx` opens in Word with real
   insertions, deletions, and moves, attributable to an author tag.
 - **Cross-platform, high-performance diffing engine** — the default
-  [Docxodus](https://github.com/JSv4/Docxodus) engine is a modernized .NET 10
-  fork of Open-XML-PowerTools' `WmlComparer`, shipped as a prebuilt, self-contained
+  [Docxodus](https://github.com/JSv4/Docxodus) engine runs `DocxDiff`, a
+  structure-aware .NET 10 comparison algorithm, shipped as a prebuilt, self-contained
   binary embedded in the wheel for Linux, macOS, and Windows (x64/arm64) — nothing to
   compile.
 

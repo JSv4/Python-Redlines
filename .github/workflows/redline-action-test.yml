@@ -44,7 +44,11 @@ jobs:
           import json, sys
           [record] = json.load(sys.stdin)
           assert record["status"] == "explicit", record
-          assert record["revisions"] == 9, record
+          # Not an exact count: this workflow installs python-redlines from PyPI,
+          # so the number tracks whatever version is published, not this branch.
+          # The exact count is pinned in tests/test_docxodus_engine.py, which runs
+          # against the working tree.
+          assert isinstance(record["revisions"], int) and record["revisions"] > 0, record
           '
           test -s "redlines/tests/fixtures/modified.redline.docx"
 
@@ -87,6 +91,10 @@ jobs:
           [record] = json.load(sys.stdin)
           assert record["path"] == "contracts/agreement.docx", record
           assert record["status"] == "modified", record
-          assert record["revisions"] == 9, record
+          # Not an exact count: this workflow installs python-redlines from PyPI,
+          # so the number tracks whatever version is published, not this branch.
+          # The exact count is pinned in tests/test_docxodus_engine.py, which runs
+          # against the working tree.
+          assert isinstance(record["revisions"], int) and record["revisions"] > 0, record
           '
           test -s "redlines/contracts/agreement.redline.docx"

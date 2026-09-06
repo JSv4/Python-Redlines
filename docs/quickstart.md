@@ -2,7 +2,7 @@
 
 `python-redlines` wraps a C# comparison engine to produce tracked-change redline `.docx`
 files. This guide uses `DocxodusEngine` — the default and recommended engine.
-`XmlPowerToolsEngine` (legacy) shares the same call signature; the only behavioural
+`XmlPowerToolsEngine` (deprecated) shares the same call signature; the only behavioural
 difference is that it silently ignores the keyword arguments shown in Step 4.
 
 ### Step 0: Install
@@ -14,8 +14,8 @@ the engine binary is prebuilt and embedded in the wheel.
 pip install python-redlines[docxodus]
 ```
 
-Use `python-redlines[ooxmlpowertools]` for the legacy engine, or `python-redlines[all]`
-for both.
+Use `python-redlines[ooxmlpowertools]` for the deprecated engine, or
+`python-redlines[all]` for both.
 
 ### Step 1: Import and Initialize the Wrapper
 
@@ -58,18 +58,22 @@ with open('/path/to/redline_output.docx', 'wb') as f:
 
 ### Step 4: Tune the Comparison (optional, DocxodusEngine only)
 
-`DocxodusEngine` accepts keyword arguments to control move detection, granularity, and
-more. See the [main README](https://github.com/JSv4/Python-Redlines#comparison-settings-docxodusengine-only) for
+`DocxodusEngine` accepts keyword arguments to control move detection, case sensitivity,
+and more. See the [main README](https://github.com/JSv4/Python-Redlines#comparison-settings-docxodusengine-only) for
 the full table.
 
 ```python
 output = wrapper.run_redline(
     'AuthorTag', original_bytes, modified_bytes,
     detect_moves=True,
-    simplify_move_markup=True,  # required with detect_moves for Word compatibility
-    detail_threshold=0.3,
+    case_insensitive=True,
 )
 ```
+
+An unrecognised keyword argument raises `ValueError`. The `engine`, `detail_threshold`
+and `simplify_move_markup` arguments were removed in 1.0.0 along with the `WmlComparer`
+algorithm they configured — see
+[Upgrading to 1.0.0](https://github.com/JSv4/Python-Redlines#upgrading-to-100).
 
 `XmlPowerToolsEngine` silently ignores these kwargs — switch engines if you need them.
 

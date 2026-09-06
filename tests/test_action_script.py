@@ -59,18 +59,34 @@ def test_inputs_defaults():
 
 
 def test_inputs_engine_kwargs():
-    inputs = ra.Inputs.from_env({
-        'INPUT_COMPARISON': 'docxdiff',
-        'INPUT_DETECT_MOVES': 'true',
-    })
-    assert inputs.engine_kwargs() == {'engine': 'docxdiff', 'detect_moves': True}
+    inputs = ra.Inputs.from_env({'INPUT_DETECT_MOVES': 'true'})
+    assert inputs.engine_kwargs() == {'detect_moves': True}
+
+
+@pytest.mark.parametrize('value', ['wmlcomparer', 'docxdiff'])
+def test_comparison_input_is_rejected(value):
+    """Docxodus v11.0.0 deleted the engine selector the input mapped onto.
+
+    Accepting it would either crash in the CLI or, worse, quietly produce
+    DocxDiff output for a workflow that asked for WmlComparer.
+    """
+    with pytest.raises(ra.ConfigError, match='comparison'):
+        ra.Inputs.from_env({'INPUT_COMPARISON': value})
+
+
+def test_comparison_rejection_explains_the_removal():
+    with pytest.raises(ra.ConfigError) as excinfo:
+        ra.Inputs.from_env({'INPUT_COMPARISON': 'wmlcomparer'})
+
+    message = str(excinfo.value)
+    assert 'v11.0.0' in message
+    assert 'DocxDiff' in message
 
 
 @pytest.mark.parametrize('env', [
     {'INPUT_ENGINE': 'wordperfect'},
     {'INPUT_HTML_PREVIEW': 'maybe'},
     {'INPUT_ORIGINAL': 'a.docx'},                              # original without modified
-    {'INPUT_ENGINE': 'xmlpowertools', 'INPUT_COMPARISON': 'docxdiff'},
     {'INPUT_ENGINE': 'xmlpowertools', 'INPUT_DETECT_MOVES': 'true'},
     {'INPUT_DETECT_MOVES': 'yes'},                             # not a bool
 ])
@@ -268,7 +284,7 @@ def test_main_explicit_pair(tmp_path, monkeypatch):
     assert 'count=1\n' in text
     payload = [line for line in text.splitlines() if line.startswith('redlines=')][0]
     record = json.loads(payload[len('redlines='):])[0]
-    assert record['revisions'] == 9
+    assert record['revisions'] == 10
     redline = Path(record['redline'])
     assert redline.is_file() and redline.stat().st_size > 0
     # absolute source paths must not escape the requested output directory
@@ -299,6 +315,6 @@ def test_main_auto_detect_over_git_history(repo, tmp_path, monkeypatch):
     record = json.loads(payload[len('redlines='):])[0]
     assert record['path'] == 'contracts/agreement.docx'
     assert record['status'] == 'modified'
-    assert record['revisions'] == 9
+    assert record['revisions'] == 10
     assert Path(record['redline']).is_file()
     assert 'contracts/agreement.docx' in summary_file.read_text()
