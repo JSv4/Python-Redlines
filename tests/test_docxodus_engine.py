@@ -1,12 +1,13 @@
 import io
 import re
 import zipfile
+import xml.etree.ElementTree as ET
 
 import pytest
 
 from python_redlines.engines import DocxodusEngine
 
-# Measured against the Docxodus v12.1.0 binary on tests/fixtures/. Docxodus
+# Measured against the Docxodus v14.1.0 binary on tests/fixtures/. Docxodus
 # v11.0.0 removed WmlComparer, so DocxDiff is the only algorithm; the count is
 # neither the 9 the old default reported nor the 11 the old opt-in reported.
 EXPECTED_REVISIONS = 10
@@ -69,6 +70,37 @@ def test_docxodus_output_is_a_valid_docx_with_tracked_changes(original_docx, mod
 
     assert "<w:ins " in document_xml
     assert "<w:del " in document_xml
+
+
+def test_docxodus_marks_a_single_changed_cjk_character(original_docx):
+    """Guard the CJK granularity fix needed by users upgrading from 0.3.0 (#34)."""
+    namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    ns = {"w": namespace}
+
+    def make_document(text):
+        output = io.BytesIO()
+        with zipfile.ZipFile(io.BytesIO(original_docx)) as template:
+            document = ET.Element(f"{{{namespace}}}document")
+            body = ET.SubElement(document, f"{{{namespace}}}body")
+            paragraph = ET.SubElement(body, f"{{{namespace}}}p")
+            run = ET.SubElement(paragraph, f"{{{namespace}}}r")
+            ET.SubElement(run, f"{{{namespace}}}t").text = text
+            with zipfile.ZipFile(output, "w") as archive:
+                for member in template.infolist():
+                    data = (ET.tostring(document, encoding="utf-8", xml_declaration=True)
+                            if member.filename == "word/document.xml"
+                            else template.read(member.filename))
+                    archive.writestr(member, data)
+        return output.getvalue()
+
+    before = make_document("本合同的交付日期为三月十五日，双方应按约履行。")
+    after = make_document("本合同的交付日期为一月十五日，双方应按约履行。")
+    redline, _, stderr = DocxodusEngine().run_redline("Reviewer", before, after)
+    assert stderr is None
+    with zipfile.ZipFile(io.BytesIO(redline)) as archive:
+        document = ET.fromstring(archive.read("word/document.xml"))
+    assert "".join(node.text or "" for node in document.findall(".//w:delText", ns)) == "三"
+    assert "".join(node.text or "" for node in document.findall(".//w:ins//w:t", ns)) == "一"
 
 
 # --- Integration tests for comparison settings ---
