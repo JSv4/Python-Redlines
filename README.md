@@ -45,6 +45,9 @@ with open("redline.docx", "wb") as f:
 That's the whole thing. The rest of this README covers the other engines, comparison
 settings, and how the packages are built and distributed.
 
+Version 2.0.0 bundles Docxodus v14.1.0. Its comparison output can differ from
+1.0.0; see [Upgrading to 2.0.0](#upgrading-to-200) before updating an existing deployment.
+
 ### ⚠️ Breaking in 1.0.0: `WmlComparer` is gone; DocxDiff is the only algorithm
 
 Docxodus v11.0.0 **removed `WmlComparer`**, the algorithm this library ran by default for its
@@ -164,7 +167,7 @@ argument raises `ValueError`.
 ### 1. `DocxodusEngine` — the default
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is an actively-maintained .NET 10.0 document
-toolchain. Python-Redlines 1.1.0 bundles Docxodus v14.1.0. Its `DocxDiff` algorithm
+toolchain. Python-Redlines 2.0.0 bundles Docxodus v14.1.0. Its `DocxDiff` algorithm
 models the document as an intermediate representation rather than a stream of runs,
 which lets it attribute a change to the exact paragraph, cell, row, or section it touched:
 
@@ -224,7 +227,7 @@ selects the wheel matching your platform automatically. Instantiating an engine 
 companion package is not installed raises `EngineNotInstalledError` telling you which
 extra to install.
 
-From 1.0.1 onward, extras pin each engine companion to the wrapper's exact release
+From 2.0.0 onward, extras pin each engine companion to the wrapper's exact release
 version. Older published releases still have unconstrained extras: if you need
 0.3.0, install both `python-redlines[docxodus]==0.3.0` and
 `python-redlines-docxodus==0.3.0` explicitly.
@@ -284,6 +287,32 @@ All three raise `ValueError` naming the removal and what to do instead. The chec
 The 0.3.0-era warning that `detect_moves=True` needed `simplify_move_markup=True` to avoid Word's
 "unreadable content" dialog applied to `WmlComparer`'s move markup. It does not apply here —
 `DocxDiff` emits move markup natively and has no such mitigation, because it needs none.
+
+## Upgrading to 2.0.0
+
+2.0.0 bundles Docxodus v14.1.0. The major version makes the change in comparison
+output an explicit upgrade: markup, revision granularity and revision counts can
+differ from 1.0.0. The Python call signatures and supported settings are unchanged.
+
+1. **Install the matching wrapper and engine through the extra:**
+
+   ```bash
+   pip install --upgrade 'python-redlines[docxodus]==2.0.0'
+   ```
+
+   All extras now require companion packages at exactly the wrapper's version.
+   Update lockfiles or separately pinned companions to 2.0.0 as well.
+2. **Review representative redlines and refresh output snapshots.** A single-character
+   CJK edit now marks just the changed character. Edits inside unchanged content-control
+   or custom-XML wrappers can be marked inside the wrapper instead of replacing it whole.
+   The project's existing fixture still reports 10 revisions; that does not imply identical
+   output for other documents.
+3. **Check error reporting.** Nonzero engine exits raise `EngineExecutionError`, a
+   `subprocess.CalledProcessError` subclass. Existing handlers still work; the message now
+   includes captured stderr and stdout, and the original exception attributes remain available.
+
+`XmlPowerToolsEngine` remains available and deprecated. If upgrading from 0.3.0, also
+apply the 1.0.0 migration steps below; the removed WmlComparer settings remain unsupported.
 
 ## Upgrading to 1.0.0
 
