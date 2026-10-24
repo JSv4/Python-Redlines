@@ -47,7 +47,7 @@ jobs:
       run: python build_differ.py ${{ steps.rid.outputs.rid }}
 
     - name: Install packages (editable)
-      run: pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+      run: pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest hatchling
 
     - name: Run tests
       run: python -m pytest tests/ -v

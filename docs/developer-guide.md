@@ -36,7 +36,7 @@ git submodule update --init --recursive
 python build_differ.py linux-x64        # or win-x64 / osx-arm64 / ...
 
 # Install all three packages editable, plus pytest
-pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest hatchling
 ```
 
 ## Building the C# binaries
@@ -94,4 +94,5 @@ current platform.
 per-platform engine wheels across three OS runners, builds the core sdist + wheel, and
 publishes all three packages to PyPI. Bump the version in
 `packages/core/src/python_redlines/__about__.py` only — the binary packages read it
-from there, so all three always release in lockstep.
+from there, so all three always release in lockstep. The core metadata hook also
+pins every engine extra to that version; no dependency pins need manual updates.

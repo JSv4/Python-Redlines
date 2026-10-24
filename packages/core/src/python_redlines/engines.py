@@ -22,6 +22,21 @@ class EngineNotInstalledError(ImportError):
     """Raised when an engine is used but its binary package is not installed."""
 
 
+class EngineExecutionError(subprocess.CalledProcessError):
+    """An engine exited unsuccessfully; its diagnostics appear in the message.
+
+    Retains CalledProcessError's returncode, cmd, stdout/output and stderr so
+    existing subprocess.CalledProcessError handlers keep working.
+    """
+
+    def __str__(self):
+        message = super().__str__()
+        for label, output in (("stderr", self.stderr), ("stdout", self.stdout)):
+            if output and output.strip():
+                message += f"\n{label}:\n{output.rstrip()}"
+        return message
+
+
 def _detect_rid() -> str:
     """Return the .NET-style runtime identifier for the current platform."""
     os_name = platform.system().lower()
@@ -142,6 +157,9 @@ class BaseEngine(object):
         A path the caller supplies is never deleted; only scratch files this
         method creates are cleaned up.
 
+        A nonzero engine exit raises EngineExecutionError (a CalledProcessError
+        subclass) with captured stderr and stdout included in its message.
+
         Additional keyword arguments are passed to _build_command() for engine-specific
         options. DocxodusEngine supports: case_insensitive, detect_moves,
         move_similarity_threshold, move_minimum_word_count, detect_format_changes,
@@ -163,7 +181,12 @@ class BaseEngine(object):
             command = self._build_command(author_tag, original_path, modified_path, target_path, **kwargs)
 
             # Capture stdout and stderr
-            result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            except subprocess.CalledProcessError as exc:
+                raise EngineExecutionError(
+                    exc.returncode, exc.cmd, output=exc.output, stderr=exc.stderr,
+                ) from exc
 
             stdout_output = result.stdout if isinstance(result.stdout, str) and len(result.stdout) > 0 else None
             stderr_output = result.stderr if isinstance(result.stderr, str) and len(result.stderr) > 0 else None
