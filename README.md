@@ -164,9 +164,9 @@ argument raises `ValueError`.
 ### 1. `DocxodusEngine` — the default
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is an actively-maintained .NET 10.0 document
-toolchain. Its `DocxDiff` algorithm models the document as an intermediate representation rather
-than a stream of runs, which lets it attribute a change to the exact paragraph, cell, row, or
-section it touched:
+toolchain. Python-Redlines 1.1.0 bundles Docxodus v14.1.0. Its `DocxDiff` algorithm
+models the document as an intermediate representation rather than a stream of runs,
+which lets it attribute a change to the exact paragraph, cell, row, or section it touched:
 
 - **Structure-aware** — tracks table cell and row properties, section properties, and header and
   footer content that a run-stream diff reports coarsely or not at all

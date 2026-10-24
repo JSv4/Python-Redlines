@@ -9,7 +9,7 @@ Python-Redlines generates `.docx` redline/tracked-changes documents by comparing
 Two comparison engines are available:
 - **XmlPowerToolsEngine** — wraps Open-XML-PowerTools WmlComparer (original engine).
   Deprecated as of 1.0.0: instantiating it emits a `DeprecationWarning`. Still published.
-- **DocxodusEngine** — wraps Docxodus, a modernized .NET 10.0 fork with better move detection.
+- **DocxodusEngine** — wraps Docxodus v14.1.0, a modernized .NET 10.0 fork with better move detection.
   Runs `DocxDiff`, its only algorithm — Docxodus v11.0.0 deleted `WmlComparer`.
 
 ## Monorepo structure — three published packages
