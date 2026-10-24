@@ -224,6 +224,16 @@ selects the wheel matching your platform automatically. Instantiating an engine 
 companion package is not installed raises `EngineNotInstalledError` telling you which
 extra to install.
 
+From 1.0.1 onward, extras pin each engine companion to the wrapper's exact release
+version. Older published releases still have unconstrained extras: if you need
+0.3.0, install both `python-redlines[docxodus]==0.3.0` and
+`python-redlines-docxodus==0.3.0` explicitly.
+
+If the engine exits unsuccessfully, `run_redline` raises `EngineExecutionError`
+(a `subprocess.CalledProcessError` subclass). Its message includes the engine's
+captured stderr and stdout; existing handlers can still access `returncode`,
+`cmd`, `stdout`/`output`, and `stderr`.
+
 ### Use the Library
 
 See the [Quick Start](#quick-start) above for a minimal example, or the
@@ -404,7 +414,7 @@ git submodule update --init --recursive
 python build_differ.py linux-x64
 
 # Install all three packages editable
-pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest hatchling
 ```
 
 ### Commands

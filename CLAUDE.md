@@ -57,7 +57,7 @@ python build_differ.py linux-x64
 python build_differ.py --all
 
 # Install all three packages editable for development
-pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest
+pip install -e packages/core -e packages/ooxmlpowertools -e packages/docxodus pytest hatchling
 
 # Run tests (from repo root)
 python -m pytest tests/
@@ -122,7 +122,8 @@ python -m build --wheel packages/docxodus      # needs an archive in _binaries/ 
 
 `packages/core/src/python_redlines/__about__.py` is the single source of truth.
 The two binary packages read it via `[tool.hatch.version] path = "../core/..."`,
-so all three always share one version. Bump only that file.
+so all three always share one version. The core's `hatch_build.py` metadata hook
+generates exact companion dependency pins from the same version. Bump only that file.
 
 ## Testing Notes
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "python-redlines"
-dynamic = ["version"]
+dynamic = ["version", "optional-dependencies"]
 description = "Open-source DOCX comparison tool to generate native Word tracked changes (redlines) in Python without MS Word dependencies."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -40,17 +40,6 @@ dependencies = [
   "platformdirs>=3.0",
 ]
 
-# Engine binaries ship in separate companion packages. Install an engine via
-# its extra, e.g. `pip install python-redlines[docxodus]`. All three packages
-# are released together from the same repository on each tagged release.
-[project.optional-dependencies]
-# Deprecated: wraps the archived Open-XML-PowerTools WmlComparer. Kept so that
-# anyone who needs that algorithm's output has somewhere to stand; `all` keeps
-# installing it so the extra does not change meaning under existing pins.
-ooxmlpowertools = ["python-redlines-ooxmlpowertools"]
-docxodus = ["python-redlines-docxodus"]
-all = ["python-redlines-ooxmlpowertools", "python-redlines-docxodus"]
-
 [project.urls]
 Homepage = "https://github.com/JSv4/Python-Redlines"
 Documentation = "https://jsv4.github.io/Python-Redlines/"
@@ -60,6 +49,11 @@ Source = "https://github.com/JSv4/Python-Redlines"
 
 [tool.hatch.version]
 path = "src/python_redlines/__about__.py"
+
+# All three packages release together. Generate exact companion pins from the
+# same version source, including in editable installs and source distributions.
+[tool.hatch.metadata.hooks.custom]
+path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/python_redlines"]
