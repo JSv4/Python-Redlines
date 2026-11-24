@@ -7,7 +7,7 @@ name = "python-redlines-ooxmlpowertools"
 dynamic = ["version"]
 description = "Open-XML-PowerTools redline engine binary for python-redlines."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
   { name = "John Scrudato IV" },

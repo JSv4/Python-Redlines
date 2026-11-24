@@ -312,14 +312,16 @@ The 0.3.0-era warning that `detect_moves=True` needed `simplify_move_markup=True
 comparison output an explicit upgrade. Every existing call and setting still works; one
 setting is new.
 
-1. **Install the matching wrapper and engine through the extra:**
+1. **Use Python 3.11 or newer.** Python 3.9 and 3.10 have reached end of life; 2.0.0 was the
+   last release to support them. CI covers 3.11 to 3.14.
+2. **Install the matching wrapper and engine through the extra:**
 
    ```bash
    pip install --upgrade 'python-redlines[docxodus]==3.0.0'
    ```
 
    Update lockfiles or separately pinned companions to 3.0.0 as well.
-2. **Review representative redlines and refresh output snapshots.** The project's fixture
+3. **Review representative redlines and refresh output snapshots.** The project's fixture
    still reports 10 revisions, but other documents can differ:
    - When only a field's displayed text changes, such as a cross-reference going from 16.4 to
      21.8, just that text is marked. A field in its short form (`w:fldSimple`) used to mark the
@@ -334,12 +336,12 @@ setting is new.
      paragraphs, content controls in tables, headers and footers around section breaks,
      comments, notes and text boxes. See its
      [changelog](https://github.com/JSv4/Docxodus/blob/v17.0.0/CHANGELOG.md) for 14.2.0–17.0.0.
-3. **Expect a refusal for very deeply nested documents.** XML nested more than 128 elements
+4. **Expect a refusal for very deeply nested documents.** XML nested more than 128 elements
    deep in a story or definition part (the body, headers, notes, styles and so on), or more
    than 256 in any other part, now raises `EngineExecutionError` with
    `xml_depth_limit_exceeded` in the message. Docxodus says real documents nest a few dozen
    levels at most. Packages past its size or compression-ratio limits are refused too.
-4. **Consider `minimum_anchor_word_count=2`** if your documents number their entries on
+5. **Consider `minimum_anchor_word_count=2`** if your documents number their entries on
    separate lines; see [Numbered entries](#numbered-entries). It needs the 3.0.0 engine.
 
 If upgrading from 1.0.0 or earlier, also apply the steps below.
@@ -480,7 +482,7 @@ engine — no Word installation, no TOS risk. See
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - .NET 10.0 SDK (only for building the engine binaries locally). Install with
   `apt install dotnet-sdk-10.0`, or `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0`.
   A .NET 8 SDK can no longer build the Docxodus engine, which targets `net10.0`.

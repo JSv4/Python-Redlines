@@ -18,7 +18,7 @@ openable and reviewable in Microsoft Word, LibreOffice, or Google Docs.
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - Two `.docx` files to compare (any two versions of the same Word document)
 
 No Microsoft Word installation, no COM automation, and no .NET SDK are required — the
