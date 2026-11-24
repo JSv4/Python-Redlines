@@ -344,7 +344,7 @@ setting is new.
 5. **Consider `minimum_anchor_word_count=2`** if your documents number their entries on
    separate lines; see [Numbered entries](#numbered-entries). It needs the 3.0.0 engine.
 
-If upgrading from 1.0.0 or earlier, also apply the steps below.
+If upgrading from 1.0.0 or earlier, also review the migration notes below, but use 3.0.0 for their installation commands and companion version pins.
 
 ## Upgrading to 2.0.0
 
