@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "python-redlines"
 dynamic = ["version", "optional-dependencies"]
-description = "Open-source DOCX comparison tool to generate native Word tracked changes (redlines) in Python without MS Word dependencies."
+description = "Open-source DOCX comparison tool, powered by the Docxodus engine, to generate native Word tracked changes (redlines) in Python without MS Word dependencies."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "python-redlines-ooxmlpowertools"
 dynamic = ["version"]
-description = "Open-XML-PowerTools redline engine binary for python-redlines."
+description = "Deprecated Open-XML-PowerTools redline engine binary for python-redlines. Use python-redlines-docxodus, the current engine, instead."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
