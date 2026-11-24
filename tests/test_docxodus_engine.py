@@ -7,7 +7,7 @@ import pytest
 
 from python_redlines.engines import DocxodusEngine
 
-# Measured against the Docxodus v14.1.0 binary on tests/fixtures/. Docxodus
+# Measured against the Docxodus v17.0.0 binary on tests/fixtures/. Docxodus
 # v11.0.0 removed WmlComparer, so DocxDiff is the only algorithm; the count is
 # neither the 9 the old default reported nor the 11 the old opt-in reported.
 EXPECTED_REVISIONS = 10
@@ -26,6 +26,39 @@ def original_docx():
 @pytest.fixture
 def modified_docx():
     return load_docx_bytes('tests/fixtures/modified.docx')
+
+
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+NS = {"w": W_NS}
+
+
+def make_document(template_docx, *paragraphs):
+    """A copy of *template_docx* whose body is exactly these plain paragraphs."""
+    document = ET.Element(f"{{{W_NS}}}document")
+    body = ET.SubElement(document, f"{{{W_NS}}}body")
+    for text in paragraphs:
+        run = ET.SubElement(ET.SubElement(body, f"{{{W_NS}}}p"), f"{{{W_NS}}}r")
+        ET.SubElement(run, f"{{{W_NS}}}t").text = text
+
+    output = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(template_docx)) as template:
+        with zipfile.ZipFile(output, "w") as archive:
+            for member in template.infolist():
+                data = (ET.tostring(document, encoding="utf-8", xml_declaration=True)
+                        if member.filename == "word/document.xml"
+                        else template.read(member.filename))
+                archive.writestr(member, data)
+    return output.getvalue()
+
+
+def document_root(docx):
+    """The parsed word/document.xml of a .docx given as bytes."""
+    with zipfile.ZipFile(io.BytesIO(docx)) as archive:
+        return ET.fromstring(archive.read("word/document.xml"))
+
+
+def joined_text(root, path):
+    return "".join(node.text or "" for node in root.findall(path, NS))
 
 
 def revision_count(stdout):
@@ -74,33 +107,68 @@ def test_docxodus_output_is_a_valid_docx_with_tracked_changes(original_docx, mod
 
 def test_docxodus_marks_a_single_changed_cjk_character(original_docx):
     """Guard the CJK granularity fix needed by users upgrading from 0.3.0 (#34)."""
-    namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    ns = {"w": namespace}
-
-    def make_document(text):
-        output = io.BytesIO()
-        with zipfile.ZipFile(io.BytesIO(original_docx)) as template:
-            document = ET.Element(f"{{{namespace}}}document")
-            body = ET.SubElement(document, f"{{{namespace}}}body")
-            paragraph = ET.SubElement(body, f"{{{namespace}}}p")
-            run = ET.SubElement(paragraph, f"{{{namespace}}}r")
-            ET.SubElement(run, f"{{{namespace}}}t").text = text
-            with zipfile.ZipFile(output, "w") as archive:
-                for member in template.infolist():
-                    data = (ET.tostring(document, encoding="utf-8", xml_declaration=True)
-                            if member.filename == "word/document.xml"
-                            else template.read(member.filename))
-                    archive.writestr(member, data)
-        return output.getvalue()
-
-    before = make_document("本合同的交付日期为三月十五日，双方应按约履行。")
-    after = make_document("本合同的交付日期为一月十五日，双方应按约履行。")
+    before = make_document(original_docx, "本合同的交付日期为三月十五日，双方应按约履行。")
+    after = make_document(original_docx, "本合同的交付日期为一月十五日，双方应按约履行。")
     redline, _, stderr = DocxodusEngine().run_redline("Reviewer", before, after)
     assert stderr is None
-    with zipfile.ZipFile(io.BytesIO(redline)) as archive:
-        document = ET.fromstring(archive.read("word/document.xml"))
-    assert "".join(node.text or "" for node in document.findall(".//w:delText", ns)) == "三"
-    assert "".join(node.text or "" for node in document.findall(".//w:ins//w:t", ns)) == "一"
+    document = document_root(redline)
+    assert joined_text(document, ".//w:delText") == "三"
+    assert joined_text(document, ".//w:ins//w:t") == "一"
+
+
+# --- Minimum anchor word count (new in Docxodus v17.0.0) ---
+
+LEASE_CLAUSES = [
+    "The tenant shall keep the premises in good repair at its own expense.",
+    "Payment of rent falls due on the first business day of every month.",
+    "Either party may terminate this lease by giving ninety days of written notice.",
+    "The landlord shall insure the building against fire and flood damage.",
+    "Disputes are resolved by arbitration seated in the city of Geneva.",
+]
+
+
+def labelled_entries(clauses):
+    """P1 / clause / P2 / clause / ... with each label on a line of its own."""
+    return [text for number, clause in enumerate(clauses, 1) for text in (f"P{number}", clause)]
+
+
+@pytest.fixture
+def renumbered_entries(original_docx):
+    """Dropping the first entry renumbers every later label but leaves its text alone."""
+    return (
+        make_document(original_docx, *labelled_entries(LEASE_CLAUSES)),
+        make_document(original_docx, *labelled_entries(LEASE_CLAUSES[1:])),
+    )
+
+
+def moved_paragraph_count(redline):
+    """Paragraphs the redline shows as moved, counted at their destination."""
+    return len([p for p in document_root(redline).findall(".//w:p", NS)
+                if p.find(".//w:moveTo", NS) is not None])
+
+
+@pytest.mark.parametrize("settings", [{}, {"minimum_anchor_word_count": 0}], ids=["omitted", "zero"])
+def test_renumbered_entries_read_as_moves_by_default(renumbered_entries, settings):
+    """The behaviour the setting exists to change; 0 must be accepted and mean the default."""
+    redline, _, stderr = DocxodusEngine().run_redline("Reviewer", *renumbered_entries, **settings)
+    assert stderr is None
+    assert moved_paragraph_count(redline) > 0
+
+
+def test_minimum_anchor_word_count_matches_renumbered_entries_by_their_text(renumbered_entries):
+    redline, _, stderr = DocxodusEngine().run_redline(
+        "Reviewer", *renumbered_entries, minimum_anchor_word_count=2,
+    )
+    assert stderr is None
+    assert moved_paragraph_count(redline) == 0
+
+    document = document_root(redline)
+    deleted = joined_text(document, ".//w:delText")
+    assert LEASE_CLAUSES[0] in deleted
+    for clause in LEASE_CLAUSES[1:]:
+        assert clause not in deleted
+    # Only label digits are inserted; no surviving clause is re-typed.
+    assert joined_text(document, ".//w:ins//w:t").strip("P0123456789") == ""
 
 
 # --- Integration tests for comparison settings ---
@@ -150,6 +218,7 @@ def test_docxodus_with_all_options(original_docx, modified_docx):
         detect_moves=True,
         move_similarity_threshold=0.7,
         move_minimum_word_count=2,
+        minimum_anchor_word_count=2,
         detect_format_changes=False,
         conflate_spaces=False,
         date_time="2025-01-01T00:00:00Z",
@@ -259,6 +328,14 @@ def test_docxodus_invalid_move_minimum_word_count_type():
         engine._build_command("Author", "orig", "mod", "out", move_minimum_word_count=2.5)
 
 
+@pytest.mark.parametrize("value", [-1, 2.5, "2", None, True, False])
+def test_docxodus_invalid_minimum_anchor_word_count(value):
+    """bool is an int subclass, and str(True) is not a number the CLI can parse."""
+    engine = DocxodusEngine()
+    with pytest.raises(ValueError, match="minimum_anchor_word_count must be a non-negative integer"):
+        engine._build_command("Author", "orig", "mod", "out", minimum_anchor_word_count=value)
+
+
 # --- Unit tests for _build_command flag construction ---
 
 def test_build_command_default():
@@ -286,6 +363,7 @@ def test_build_command_with_all_flags():
         detect_moves=True,
         move_similarity_threshold=0.7,
         move_minimum_word_count=2,
+        minimum_anchor_word_count=2,
         detect_format_changes=False,
         conflate_spaces=False,
         date_time="2025-01-01T00:00:00Z",
@@ -297,7 +375,18 @@ def test_build_command_with_all_flags():
     assert "--no-conflate-spaces" in cmd
     assert "--move-similarity-threshold=0.7" in cmd
     assert "--move-minimum-word-count=2" in cmd
+    assert "--minimum-anchor-word-count=2" in cmd
     assert "--date-time=2025-01-01T00:00:00Z" in cmd
+
+
+def test_build_command_passes_a_zero_minimum_anchor_word_count():
+    """0 is a legal value here, unlike move_minimum_word_count, and must not be lost as falsy."""
+    engine = DocxodusEngine()
+    cmd = engine._build_command(
+        "Author", "/tmp/orig.docx", "/tmp/mod.docx", "/tmp/out.docx",
+        minimum_anchor_word_count=0,
+    )
+    assert "--minimum-anchor-word-count=0" in cmd
 
 
 def test_build_command_false_bools_not_added():
