@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.11 or higher
 - .NET 10.0 SDK (to compile the C# engine binaries). The Docxodus engine targets
   `net10.0`; the Open-XML-PowerTools engine still targets `net8.0` and the .NET 10 SDK
   builds both.

@@ -162,10 +162,11 @@ class BaseEngine(object):
 
         Additional keyword arguments are passed to _build_command() for engine-specific
         options. DocxodusEngine supports: case_insensitive, detect_moves,
-        move_similarity_threshold, move_minimum_word_count, detect_format_changes,
-        conflate_spaces, date_time. It raises ValueError for unrecognised settings and
-        for the WmlComparer-era settings removed in Docxodus v11.0.0 (engine,
-        detail_threshold, simplify_move_markup). XmlPowerToolsEngine ignores kwargs.
+        move_similarity_threshold, move_minimum_word_count, minimum_anchor_word_count,
+        detect_format_changes, conflate_spaces, date_time. It raises ValueError for
+        unrecognised settings and for the WmlComparer-era settings removed in Docxodus
+        v11.0.0 (engine, detail_threshold, simplify_move_markup). XmlPowerToolsEngine
+        ignores kwargs.
         """
         scratch_files = []
         try:
@@ -288,6 +289,7 @@ class DocxodusEngine(BaseEngine):
     _VALUE_FLAGS = [
         ('move_similarity_threshold', '--move-similarity-threshold'),
         ('move_minimum_word_count', '--move-minimum-word-count'),
+        ('minimum_anchor_word_count', '--minimum-anchor-word-count'),
         ('date_time', '--date-time'),
     ]
 
@@ -321,6 +323,12 @@ class DocxodusEngine(BaseEngine):
             val = kwargs['move_minimum_word_count']
             if not isinstance(val, int) or val < 1:
                 raise ValueError(f"move_minimum_word_count must be a positive integer, got {val!r}")
+
+        if 'minimum_anchor_word_count' in kwargs:
+            val = kwargs['minimum_anchor_word_count']
+            # bool is an int subclass, but would reach the CLI as "True".
+            if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+                raise ValueError(f"minimum_anchor_word_count must be a non-negative integer, got {val!r}")
 
     def _build_command(self, author_tag, original_path, modified_path, target_path, **kwargs):
         self._validate_kwargs(kwargs)

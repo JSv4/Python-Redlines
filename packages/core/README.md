@@ -37,10 +37,12 @@ version as the wrapper. For older releases, pin both packages explicitly (for
 example, `python-redlines[docxodus]==0.3.0` and
 `python-redlines-docxodus==0.3.0`). Existing published metadata is unchanged.
 
-2.0.0 bundles Docxodus v14.1.0. Python call signatures and supported settings
-are unchanged from 1.0.0, but comparison markup and revision granularity can differ.
+3.0.0 bundles Docxodus v17.0.0 and adds one setting, `minimum_anchor_word_count`.
+Existing call signatures and settings are unchanged from 2.0.0, but comparison markup
+and revision counts can differ, and some very deeply nested documents are now refused.
+It requires Python 3.11 or newer; 2.0.0 was the last release to support 3.9 and 3.10.
 Review representative redlines when upgrading; see the
-[2.0.0 migration guide](https://github.com/JSv4/Python-Redlines#upgrading-to-200).
+[3.0.0 migration guide](https://github.com/JSv4/Python-Redlines#upgrading-to-300).
 
 An unsuccessful engine exit raises `EngineExecutionError`, a subclass of
 `subprocess.CalledProcessError`. Its message includes the captured stderr and

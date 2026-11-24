@@ -7,7 +7,7 @@ name = "python-redlines-docxodus"
 dynamic = ["version"]
 description = "Docxodus redline engine binary for python-redlines."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
   { name = "John Scrudato IV" },

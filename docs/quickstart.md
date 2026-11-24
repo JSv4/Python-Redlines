@@ -79,8 +79,8 @@ algorithm they configured — see
 
 ### See also
 
-- [Upgrading to 2.0.0](https://github.com/JSv4/Python-Redlines#upgrading-to-200) —
-  engine output changes, matching companion packages and error reporting
+- [Upgrading to 3.0.0](https://github.com/JSv4/Python-Redlines#upgrading-to-300) —
+  engine output changes, a new comparison setting and refused documents
 - [How to compare two Word documents programmatically in Python](tutorials/how-to-compare-word-documents-python.md) —
   a step-by-step tutorial covering this same flow in more depth
 - [Live demo](https://redlines.opensource.legal) — try a comparison in your browser

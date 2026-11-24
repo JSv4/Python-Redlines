@@ -45,8 +45,8 @@ with open("redline.docx", "wb") as f:
 That's the whole thing. The rest of this README covers the other engines, comparison
 settings, and how the packages are built and distributed.
 
-Version 2.0.0 bundles Docxodus v14.1.0. Its comparison output can differ from
-1.0.0; see [Upgrading to 2.0.0](#upgrading-to-200) before updating an existing deployment.
+Version 3.0.0 bundles Docxodus v17.0.0. Its comparison output can differ from
+2.0.0; see [Upgrading to 3.0.0](#upgrading-to-300) before updating an existing deployment.
 
 ### ⚠️ Breaking in 1.0.0: `WmlComparer` is gone; DocxDiff is the only algorithm
 
@@ -167,7 +167,7 @@ argument raises `ValueError`.
 ### 1. `DocxodusEngine` — the default
 
 **[Docxodus](https://github.com/JSv4/Docxodus)** is an actively-maintained .NET 10.0 document
-toolchain. Python-Redlines 2.0.0 bundles Docxodus v14.1.0. Its `DocxDiff` algorithm
+toolchain. Python-Redlines 3.0.0 bundles Docxodus v17.0.0. Its `DocxDiff` algorithm
 models the document as an intermediate representation rather than a stream of runs,
 which lets it attribute a change to the exact paragraph, cell, row, or section it touched:
 
@@ -266,12 +266,30 @@ redline_bytes, stdout, stderr = engine.run_redline(
 | `detect_moves` | bool | `False` | Enable move detection |
 | `move_similarity_threshold` | float | `0.8` | Jaccard threshold for move matching (0.0–1.0) |
 | `move_minimum_word_count` | int | `3` | Minimum words for move detection |
+| `minimum_anchor_word_count` | int | `0` | Words a paragraph needs before it is used to line the two documents up; see [Numbered entries](#numbered-entries) |
 | `detect_format_changes` | bool | `True` | Detect block-level formatting changes |
 | `conflate_spaces` | bool | `True` | Treat breaking/non-breaking spaces the same |
 | `date_time` | str | now | Custom ISO 8601 timestamp for revisions |
 
 Anything else raises `ValueError`, including a misspelled setting name. Passing a setting to
 `XmlPowerToolsEngine` is still silently ignored — it has never accepted any.
+
+### Numbered entries
+
+Some documents put a short label on its own line before each entry: "P1", then the entry's
+text, then "P2", and so on. Adding or removing an entry changes every later label, and the
+comparison can then report the entries' unchanged text as moved. Setting
+`minimum_anchor_word_count=2` (new in 3.0.0) makes it match the entries by their text
+instead, so each label just shows its number changing:
+
+```python
+redline_bytes, stdout, stderr = engine.run_redline(
+    "Reviewer", original, modified,
+    minimum_anchor_word_count=2,
+)
+```
+
+Leave it at the default, `0`, for other documents. It must be a non-negative integer.
 
 ### Settings removed in 1.0.0
 
@@ -287,6 +305,46 @@ All three raise `ValueError` naming the removal and what to do instead. The chec
 The 0.3.0-era warning that `detect_moves=True` needed `simplify_move_markup=True` to avoid Word's
 "unreadable content" dialog applied to `WmlComparer`'s move markup. It does not apply here —
 `DocxDiff` emits move markup natively and has no such mitigation, because it needs none.
+
+## Upgrading to 3.0.0
+
+3.0.0 bundles Docxodus v17.0.0, up from v14.1.0. The major version makes the change in
+comparison output an explicit upgrade. Every existing call and setting still works; one
+setting is new.
+
+1. **Use Python 3.11 or newer.** Python 3.9 and 3.10 have reached end of life; 2.0.0 was the
+   last release to support them. CI covers 3.11 to 3.14.
+2. **Install the matching wrapper and engine through the extra:**
+
+   ```bash
+   pip install --upgrade 'python-redlines[docxodus]==3.0.0'
+   ```
+
+   Update lockfiles or separately pinned companions to 3.0.0 as well.
+3. **Review representative redlines and refresh output snapshots.** The project's fixture
+   still reports 10 revisions, but other documents can differ:
+   - When only a field's displayed text changes, such as a cross-reference going from 16.4 to
+     21.8, just that text is marked. A field in its short form (`w:fldSimple`) used to mark the
+     whole paragraph as deleted and re-inserted.
+   - Formatting changes inside table cells, and on paragraph marks, are now tracked. They were
+     silently left untracked, so revision counts can rise on documents whose text is unchanged.
+     `detect_format_changes=False` suppresses the paragraph-mark revisions but not run
+     formatting in cells, which it has never suppressed in body text either.
+   - A phrase replaced in a paragraph containing a tab or line break is one deletion and one
+     insertion rather than a run of one-word edits.
+   - Docxodus also reports changes to heavily rewritten paragraphs, moves among edited
+     paragraphs, content controls in tables, headers and footers around section breaks,
+     comments, notes and text boxes. See its
+     [changelog](https://github.com/JSv4/Docxodus/blob/v17.0.0/CHANGELOG.md) for 14.2.0–17.0.0.
+4. **Expect a refusal for very deeply nested documents.** XML nested more than 128 elements
+   deep in a story or definition part (the body, headers, notes, styles and so on), or more
+   than 256 in any other part, now raises `EngineExecutionError` with
+   `xml_depth_limit_exceeded` in the message. Docxodus says real documents nest a few dozen
+   levels at most. Packages past its size or compression-ratio limits are refused too.
+5. **Consider `minimum_anchor_word_count=2`** if your documents number their entries on
+   separate lines; see [Numbered entries](#numbered-entries). It needs the 3.0.0 engine.
+
+If upgrading from 1.0.0 or earlier, also review the migration notes below, but use 3.0.0 for their installation commands and companion version pins.
 
 ## Upgrading to 2.0.0
 
@@ -424,7 +482,7 @@ engine — no Word installation, no TOS risk. See
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - .NET 10.0 SDK (only for building the engine binaries locally). Install with
   `apt install dotnet-sdk-10.0`, or `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0`.
   A .NET 8 SDK can no longer build the Docxodus engine, which targets `net10.0`.
